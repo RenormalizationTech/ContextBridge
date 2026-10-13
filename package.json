@@ -44,8 +44,52 @@
         "command": "contextBridge.open",
         "title": "Open",
         "category": "ContextBridge"
+      },
+      {
+        "command": "contextBridge.addFiles",
+        "title": "Add File to ContextBridge"
+      },
+      {
+        "command": "contextBridge.addSelection",
+        "title": "Add Selection to ContextBridge"
+      },
+      {
+        "command": "contextBridge.clearAttachments",
+        "title": "Clear Attachments",
+        "category": "ContextBridge"
       }
-    ]
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "contextBridge.addFiles",
+          "when": "!explorerResourceIsFolder",
+          "group": "contextBridge@1"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "contextBridge.addFiles",
+          "group": "contextBridge@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "contextBridge.addSelection",
+          "group": "contextBridge@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "contextBridge.addFiles",
+          "when": "activeEditor"
+        },
+        {
+          "command": "contextBridge.addSelection",
+          "when": "editorIsOpen"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "node esbuild.mjs",

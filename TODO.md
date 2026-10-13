@@ -9,7 +9,7 @@ This is the handoff checklist for continuing development on another machine. Pro
 - [x] Document MVP goals and milestones.
 - [ ] Implement the extension. The Phase 2 scaffold exists (mock provider only).
 
-**Next task:** Phase 3 (Explorer and selection attachments).
+**Next task:** Phase 4, the Claude Code adapter.
 
 ## Continue on Another Machine
 
@@ -56,13 +56,13 @@ For an existing checkout, inspect `git status` and save any local work before up
 
 ## Phase 3 — Explicit Context
 
-- [ ] Add “Add to Context” for Explorer files.
-- [ ] Add the active editor selection with source path and line range.
-- [ ] Display attachments with preview and removal controls.
-- [ ] Define attachment snapshot behavior, including unsaved editor content and changes after attachment.
-- [ ] Handle duplicate attachments, missing files, unsupported/binary content, and oversized inputs.
-- [ ] Show context limits and require visible handling of omitted or truncated content.
-- [ ] Assemble a predictable request payload with clear source boundaries.
+- [x] Add “Add to Context” for Explorer files.
+- [x] Add the active editor selection with source path and line range.
+- [x] Display attachments with preview and removal controls.
+- [x] Define attachment snapshot behavior, including unsaved editor content and changes after attachment.
+- [x] Handle duplicate attachments, missing files, unsupported/binary content, and oversized inputs.
+- [x] Show context limits and require visible handling of omitted or truncated content.
+- [x] Assemble a predictable request payload with clear source boundaries.
 
 **Done when:** The user can inspect exactly which attachments will be sent, and the payload presents them clearly as the focus of the question. The UI does not imply the provider is restricted to them.
 
@@ -112,9 +112,9 @@ At the end of each development session:
 
 ### Latest Handoff
 
-- **Updated:** October 12, 2026 (branch `extension-scaffold`).
-- **Implemented:** Phase 2 scaffold. Manifest, esbuild bundle (`dist/extension.cjs`), F5 launch config, `src/context` (attachment type, prompt assembly), `src/providers` (provider interface, mock), `src/chat` (webview chat with streaming and Cancel), and unit tests.
-- **Next action:** Phase 3 attachments.
+- **Updated:** October 12, 2026 (branch `attachments`).
+- **Implemented:** Phase 3 attachments. Explorer/editor-tab/palette "Add File", editor "Add Selection" (multi-cursor; whole file when empty), chips with open/remove/clear, files read at send time (unsaved edits included), selections snapshotted, duplicates ignored, binary files and folders refused, files over 256 KB / beyond 1 MB total / missing at send sent as path-only references with a visible notice.
+- **Next action:** Phase 4, the Claude Code adapter.
 - **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex); their side effects are a documented, accepted risk.
 - **Open decisions:** Claude MCP server discovery for per-server allow rules (wildcard `mcp__*` doesn't work); Codex transport (`exec --json` vs `app-server`); provider executable discovery.
-- **Validation:** `npm run check` passes (typecheck, 4 unit tests, build) in the repo and in a clean copy installed with `npm ci`. A smoke test loading `dist/extension.cjs` with a stubbed `vscode` module registered the view and command, streamed the mock answer, and stopped it on cancel. `vsce package` produced a 9-file VSIX. The owner confirmed the mock chat works in the Extension Development Host (F5).
+- **Validation:** `npm run check` passes (typecheck, 10 unit tests, build). A smoke test of the built extension with a stubbed `vscode` module and real files confirmed: binary and folder refused, duplicate ignored, selection range 2-3 (end-of-line edge excluded), oversized and deleted files sent as references with notices, remove/clear. The owner confirmed attachments work in the Extension Development Host (F5).

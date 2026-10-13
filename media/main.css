@@ -55,10 +55,46 @@ body {
 }
 
 .chip {
-  padding: 1px 6px;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
   border-radius: 10px;
   background: var(--vscode-badge-background);
   color: var(--vscode-badge-foreground);
+}
+
+.chip.warning {
+  outline: 1px solid var(--vscode-editorWarning-foreground);
+}
+
+.chip button,
+button.link {
+  padding: 1px 6px;
+  border: none;
+  color: inherit;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip button:hover,
+button.link:hover {
+  background: none;
+  text-decoration: underline;
+}
+
+.chip-remove {
+  padding-left: 0 !important;
+}
+
+button.link {
+  color: var(--vscode-textLink-foreground);
 }
 
 textarea {

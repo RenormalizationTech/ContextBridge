@@ -29,16 +29,44 @@
     if (items.length === 0) {
       const empty = document.createElement('span');
       empty.className = 'muted';
-      empty.textContent = 'No attachments';
+      empty.textContent = 'No attachments. Right-click a file or selection and choose "Add ... to ContextBridge".';
       attachments.appendChild(empty);
       return;
     }
     for (const item of items) {
       const chip = document.createElement('span');
-      chip.className = 'chip';
-      chip.textContent = item.range ? `${item.path}:${item.range.start}-${item.range.end}` : item.path;
+      chip.className = item.note ? 'chip warning' : 'chip';
+
+      const label = document.createElement('button');
+      label.type = 'button';
+      label.className = 'chip-label';
+      label.textContent = item.range ? `${item.path}:${item.range.start}-${item.range.end}` : item.path;
+      label.title = [
+        item.kind === 'selection'
+          ? 'Selection: snapshot taken when attached'
+          : 'File: current content is read when you send',
+        item.note,
+        'Click to open',
+      ].filter(Boolean).join('\n');
+      label.addEventListener('click', () => vscode.postMessage({ type: 'openAttachment', id: item.id }));
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'chip-remove';
+      remove.textContent = '×';
+      remove.title = 'Remove';
+      remove.setAttribute('aria-label', `Remove ${label.textContent}`);
+      remove.addEventListener('click', () => vscode.postMessage({ type: 'removeAttachment', id: item.id }));
+
+      chip.append(label, remove);
       attachments.appendChild(chip);
     }
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'link';
+    clear.textContent = 'Clear';
+    clear.addEventListener('click', () => vscode.postMessage({ type: 'clearAttachments' }));
+    attachments.appendChild(clear);
   }
 
   composer.addEventListener('submit', (event) => {
@@ -75,6 +103,9 @@
           answer.textContent += message.text;
           answer.scrollIntoView({ block: 'end' });
         }
+        break;
+      case 'notice':
+        addMessage('status', message.text);
         break;
       case 'tool':
         addMessage('status', `${message.name}: ${message.detail}`);

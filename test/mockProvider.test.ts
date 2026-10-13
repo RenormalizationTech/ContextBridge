@@ -5,7 +5,7 @@ import { MockProvider } from '../src/providers/mockProvider.ts';
 import type { ProviderEvent } from '../src/providers/types.ts';
 
 const request = {
-  prompt: buildPrompt([{ id: '1', path: 'a.ts', text: 'x' }], 'Explain a.ts'),
+  prompt: buildPrompt([{ path: 'a.ts', text: 'x' }], 'Explain a.ts'),
   cwd: '/workspace',
 };
 
