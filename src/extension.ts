@@ -16,7 +16,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const config = () => vscode.workspace.getConfiguration('contextBridge');
   const stringSetting = (key: string) => config().get<string>(key)?.trim() || undefined;
   const providers = [
-    new ClaudeProvider(() => stringSetting('claude.path')),
+    new ClaudeProvider(() => stringSetting('claude.path'), vscode.Uri.joinPath(context.extensionUri, 'dist', 'git-mcp.cjs').fsPath),
     new CodexProvider(
       () => stringSetting('codex.path'),
       () => config().get<CodexTransport>('codex.transport', 'app-server'),

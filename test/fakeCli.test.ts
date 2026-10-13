@@ -494,3 +494,20 @@ test('Claude adapter: without get_settings, the footer gets the init model and t
   assert.deepEqual(events.filter((event) => event.type === 'model'), [{ type: 'model', model: 'resolved-opus', effort: 'max' }]);
   assert.deepEqual(events.at(-1), { type: 'done', cancelled: false });
 });
+
+test('Claude adapter: Ask mode adds the read-only Git MCP server; Agent mode does not', async () => {
+  process.env.FAKE_MODE = 'normal';
+  const provider = new ClaudeProvider(() => claudePath, '/ext/dist/git-mcp.cjs');
+  writeFileSync(logFile, '');
+  await ask(provider);
+  const args: string[] = readLog()[0].args;
+  const config = JSON.parse(args[args.indexOf('--mcp-config') + 1]);
+  assert.deepEqual(config.mcpServers.contextbridge, { type: 'stdio', command: process.execPath, args: ['/ext/dist/git-mcp.cjs', dir], env: { ELECTRON_RUN_AS_NODE: '1' } });
+  assert.ok(!args.includes('--strict-mcp-config'), "the user's own MCP servers stay available");
+  assert.ok(!args[args.indexOf('--tools') + 1].split(',').includes('Bash'), 'still no shell');
+
+  provider.resetConversation();
+  writeFileSync(logFile, '');
+  await ask(provider, { mode: 'agent', requestPermission: async () => true });
+  assert.ok(!readLog()[0].args.includes('--mcp-config'));
+});

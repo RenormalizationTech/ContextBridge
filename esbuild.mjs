@@ -1,4 +1,5 @@
-// Bundles the extension host (dist/extension.cjs, CommonJS as VS Code loads it) and the chat webview script (dist/webview.js).
+// Bundles the extension host (dist/extension.cjs, CommonJS as VS Code loads it), the Git MCP server
+// (dist/git-mcp.cjs) and the chat webview script (dist/webview.js).
 import { cpSync, mkdirSync, readdirSync } from 'node:fs';
 import * as esbuild from 'esbuild';
 
@@ -12,6 +13,17 @@ const extension = {
   target: 'node20',
   external: ['vscode'],
   sourcemap: true,
+  logLevel: 'info',
+};
+
+// The read-only Git MCP server Claude Code starts in Ask mode (src/git/gitServer.ts).
+const gitServer = {
+  entryPoints: ['src/git/gitServer.ts'],
+  outfile: 'dist/git-mcp.cjs',
+  bundle: true,
+  platform: 'node',
+  format: 'cjs',
+  target: 'node20',
   logLevel: 'info',
 };
 
@@ -37,7 +49,7 @@ for (const font of readdirSync('node_modules/katex/dist/fonts').filter((name) =>
 }
 
 if (watch) {
-  await Promise.all([extension, webview].map(async (options) => (await esbuild.context(options)).watch()));
+  await Promise.all([extension, gitServer, webview].map(async (options) => (await esbuild.context(options)).watch()));
 } else {
-  await Promise.all([extension, webview].map((options) => esbuild.build(options)));
+  await Promise.all([extension, gitServer, webview].map((options) => esbuild.build(options)));
 }

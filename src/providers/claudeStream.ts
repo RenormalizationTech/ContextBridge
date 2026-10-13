@@ -1,4 +1,5 @@
 import { relative, isAbsolute } from 'node:path';
+import { gitCommandLine } from '../git/gitTools.ts';
 import type { ModelCatalog, ProviderEvent } from './types.ts';
 
 // Built-in tools that exist in Ask mode. Edit, Write, Bash and other tools that can modify the
@@ -88,7 +89,9 @@ export class ClaudeStreamParser {
         if (event.error === 'model_not_found') this.#modelUnavailable = true;
         return (event.message?.content ?? [])
           .filter((block: any) => block.type === 'tool_use')
-          .map((block: any) => ({ type: 'tool', name: toolLabel(block.name), detail: this.#toolDetail(block.input ?? {}) }));
+          .map((block: any) => (block.name?.startsWith(GIT_TOOL_PREFIX)
+            ? { type: 'tool', name: gitCommandLine(block.name.slice(GIT_TOOL_PREFIX.length), block.input ?? {}), detail: '' }
+            : { type: 'tool', name: toolLabel(block.name), detail: this.#toolDetail(block.input ?? {}) }));
       case 'result':
         this.finished = true;
         if (event.is_error || event.subtype !== 'success') {
@@ -126,6 +129,10 @@ export class ClaudeStreamParser {
     return '';
   }
 }
+
+// ContextBridge's read-only Git MCP server (src/git/gitServer.ts).
+export const GIT_SERVER_NAME = 'contextbridge';
+const GIT_TOOL_PREFIX = `mcp__${GIT_SERVER_NAME}__`;
 
 function toolLabel(name: string): string {
   const mcp = name.match(/^mcp__(.+?)__(.+)$/);

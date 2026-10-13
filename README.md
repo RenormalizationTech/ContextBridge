@@ -94,10 +94,13 @@ Ask mode is enforced through each CLI's own configuration, not just by asking th
 | --- | --- | --- |
 | How | Started with only read and search tools (`Read`, `Grep`, `Glob`, `WebFetch`, `WebSearch`, `Agent`, `ToolSearch`). Other permission requests are denied. | Runs in the read-only sandbox with approvals turned off, including for follow-up questions. Any approval request that arrives anyway is declined. |
 | Can read and search your files | Yes | Yes, including read-only shell commands |
+| Can read Git history and diffs | Yes, through ContextBridge's read-only Git tools: `git status`, `git diff` (uncommitted, staged, or against a commit or branch), `git log` and `git show`. There's still no shell. | Yes, with read-only `git` commands in the sandbox |
 | Can search the web | Yes (`WebSearch`, `WebFetch`) | Yes, with Codex's web search tool (`contextBridge.codex.webSearch`, default `live`). Shell commands stay offline. |
 | Can edit, create or delete files, or run Git commands that change the repo | No | No |
 
 **Not covered:** your own **MCP servers** (Claude Code) and **plugins** (Codex) stay available, because ContextBridge keeps each CLI's capabilities. They run with whatever access they have, so an MCP server that writes files or updates an external service, or a Codex computer-use plugin, can still have side effects. If that matters to you, remove or disable them in the CLI's own configuration.
+
+**Git in Claude Code's Ask mode:** rather than the shell, ContextBridge gives Claude Code four tools of its own (`git_status`, `git_diff`, `git_log`, `git_show`). They show up in the chat as the git command they ran, for example `git diff --cached`. They build the git command themselves from checked arguments, so nothing else can run: no options like `--output`, no external diff programs, and no index refresh. The shell stays off because allow rules in your Claude settings would apply to it before ContextBridge could check the command. Ask about your own uncommitted work ("what did I change since my last commit?") or history ("what changed in the last three commits?").
 
 Conversations are saved by each CLI like any other session (for example, they appear in Claude Code's `/resume` list). Details and test evidence: [docs/provider-feasibility.md](docs/provider-feasibility.md).
 

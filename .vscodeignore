@@ -1,6 +1,7 @@
 **
 !dist/extension.cjs
 !dist/webview.js
+!dist/git-mcp.cjs
 !dist/katex/**
 !media/**
 !package.json

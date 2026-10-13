@@ -61,7 +61,7 @@ These ran in a throwaway Git fixture (`src/calc.py`, plus `src/helper.py` contai
 ### Limitations
 
 - **Accepted risk: MCP tools can have side effects.** Ask mode keeps all MCP tools (owner decision). An MCP server that writes files (for example a filesystem server) can modify the workspace, and remote MCP tools such as Claude Docs `update`/`delete` can change external services. The ask-only guarantee covers Claude Code's built-in tools only. User-facing docs must say this.
-- No shell, so read-only commands such as `git log` and `git diff` are unavailable. Consider allowing specific read-only Bash patterns later.
+- No shell. Read-only Git is provided instead by ContextBridge's own MCP server (`src/git/gitServer.ts`, added October 13, 2026): `git_status`, `git_diff`, `git_log` and `git_show`, passed with `--mcp-config` in Ask mode only. Allowing read-only Bash patterns was rejected: with Bash in the tool set, allow rules in the user's Claude settings (for example `Bash(git push:*)`) apply before the permission prompt reaches ContextBridge. The server builds each command from validated arguments (revisions and paths can't start with `-`), adds `--no-ext-diff --no-textconv`, and runs git with `GIT_OPTIONAL_LOCKS=0` and `core.fsmonitor=false`. A test runs it against a real repository and checks that files and `.git` are byte-for-byte unchanged, including a rejected `--output` attempt. Live: Claude found the tools through `ToolSearch` and answered "what did I change since my last commit?" from `git diff`, and `npm run test:boundary` (with an added git `--output` step) passed. Codex runs git through its read-only sandbox (`git status`, `git diff`, `git log` worked live).
 - Hooks configured in user settings still run (they are user-authored).
 
 ## Codex

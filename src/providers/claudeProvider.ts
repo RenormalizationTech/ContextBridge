@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
-import { ASK_MODE_TOOLS, askModePermission, claudeCatalog, ClaudeStreamParser, describeToolCall, withLoginHint } from './claudeStream.ts';
+import { ASK_MODE_TOOLS, askModePermission, claudeCatalog, ClaudeStreamParser, describeToolCall, GIT_SERVER_NAME, withLoginHint } from './claudeStream.ts';
 import { captureStderr, childEnv, findExecutable, readLines, runQuiet } from './process.ts';
 import type { ModelCatalog, Provider, ProviderEvent, ProviderRequest, ProviderStatus } from './types.ts';
 
@@ -12,9 +12,12 @@ export class ClaudeProvider implements Provider {
   readonly streamsTokens = true;
   #sessionId?: string;
   readonly #configuredPath: () => string | undefined;
+  readonly #gitServer?: string;
 
-  constructor(configuredPath: () => string | undefined) {
+  // gitServer: the bundled read-only Git MCP server (dist/git-mcp.cjs), offered in Ask mode.
+  constructor(configuredPath: () => string | undefined, gitServer?: string) {
     this.#configuredPath = configuredPath;
+    this.#gitServer = gitServer;
   }
 
   resetConversation(): void {
@@ -85,6 +88,9 @@ export class ClaudeProvider implements Provider {
     ];
     // Ask-mode boundary: only read-oriented built-in tools exist. Agent mode keeps the default tool set.
     if (request.mode === 'ask') args.push('--tools', ASK_MODE_TOOLS.join(','));
+    // Read-only Git (status, diff, log, show) in Ask mode, in place of the shell. Added next to
+    // the user's own MCP servers. Agent mode has Bash for git.
+    if (request.mode === 'ask' && this.#gitServer) args.push('--mcp-config', gitMcpConfig(this.#gitServer, request.cwd));
     // A resumed session can switch models; the conversation carries over.
     if (request.model) args.push('--model', request.model);
     if (request.effort) args.push('--effort', request.effort);
@@ -192,6 +198,16 @@ export class ClaudeProvider implements Provider {
 }
 
 const SETTINGS_REQUEST = 'contextbridge-settings';
+
+// Runs the Git server with the Node.js that runs this code: VS Code's Electron binary acts as
+// Node with ELECTRON_RUN_AS_NODE, so users don't need Node installed.
+function gitMcpConfig(server: string, cwd: string): string {
+  return JSON.stringify({
+    mcpServers: {
+      [GIT_SERVER_NAME]: { type: 'stdio', command: process.execPath, args: [server, cwd], env: { ELECTRON_RUN_AS_NODE: '1' } },
+    },
+  });
+}
 
 // Asks a `claude -p` process control questions without sending a message, so there's no model
 // call: `initialize` lists the models, `get_settings` reports the model and effort that apply.
