@@ -482,9 +482,9 @@ test('Claude adapter: model list and defaults from control requests, without a m
   assert.equal(await provider.defaultEffort('old', dir), undefined);
   assert.ok(!readLog().some((entry) => entry.prompt), 'no question was sent');
 
-  // Older CLIs without these requests fall back to the help text (fake prints nothing: built-in aliases).
+  // A CLI that can't answer them: no model list, so the pickers stay hidden.
   process.env.FAKE_MODE = 'nosettings';
-  assert.deepEqual((await provider.listModels(dir))?.models.map((model) => model.id), ['fable', 'opus', 'sonnet', 'haiku']);
+  assert.equal(await provider.listModels(dir), undefined);
 });
 
 test('Claude adapter: without get_settings, the footer gets the init model and the requested effort', async () => {

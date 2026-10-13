@@ -7,16 +7,16 @@ This is the handoff checklist for continuing development on another machine. Pro
 - [x] Choose ContextBridge as the project name.
 - [x] Define the product direction: one VS Code extension, Claude Code and Codex adapters, explicit attachments, Ask mode.
 - [x] Document MVP goals and milestones.
-- [ ] Implement the extension. The Phase 2 scaffold exists (mock provider only).
+- [x] Implement the extension: Claude Code and Codex providers, attachments, Ask/Agent modes, history (0.1.0), model and effort pickers (0.2.0).
 
-**Next task:** Day-to-day use of 0.1.0. Later: Marketplace publication.
+**Next task:** Day-to-day use of 0.2.0. Later: Marketplace publication.
 
 ## Continue on Another Machine
 
 ```sh
 git clone https://github.com/RenormalizationTech/ContextBridge.git
 cd ContextBridge
-git switch provider-feasibility   # or the current development branch
+git switch main   # or the current development branch, if one is in progress
 ```
 
 For an existing checkout, inspect `git status` and save any local work before updating it with `git pull --ff-only` on the appropriate branch. Reuse an existing development branch when continuing unfinished work.
@@ -50,7 +50,7 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [x] Define shared request, attachment, streaming-event, error, and cancellation interfaces.
 - [x] Add a command to open ContextBridge and a minimal chat view.
 - [x] Add a mock provider so editor workflows can be developed without a live account.
-- [ ] Define provider executable discovery for local VS Code (moved to Phase 4 with the Claude adapter).
+- [x] Define provider executable discovery for local VS Code (done in Phase 4: login-shell PATH plus common install locations, overridable with `contextBridge.claude.path` / `contextBridge.codex.path`).
 
 **Done when:** A fresh checkout can install dependencies, build, and open ContextBridge in a VS Code Extension Development Host with a mock response.
 
@@ -86,7 +86,7 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [x] Repeat ask-only boundary checks with the actual extension and each supported provider. (`npm run test:boundary` drives the shipped adapters against the real CLIs.)
 - [x] Verify setup from a fresh checkout on the second development machine; document any environment limitations. (October 13, 2026: a fresh clone on the owner's MacBook Air with Node 26.11.1 built after `npm install`. Findings documented in the README: `npm install` is required before F5 or a build, and newer npm's install-scripts warning for esbuild/vsce-sign is harmless.)
 - [x] Document installation, reliance on the provider CLIs for authentication, usage, local-only support, and exact access behavior (ask-only enforced; attachments focus but do not isolate).
-- [x] Package an installable VSIX for personal use (`npm run package` → `dist/contextbridge-0.1.0.vsix`).
+- [x] Package an installable VSIX for personal use (`npm run package` → `dist/contextbridge-<version>.vsix`).
 - [ ] Later: choose a publisher identity, create a short demonstration, and publish to the VS Code Marketplace.
 - [ ] Compare the workflow with the official provider extensions and collect early-user feedback.
 
@@ -112,7 +112,7 @@ At the end of each development session:
 
 ### Latest Handoff
 
-- **Updated:** October 13, 2026 (branch `model-effort`).
+- **Updated:** October 13, 2026 (branch `model-effort`, version 0.2.0).
 - **Implemented:**
   - Phase 5 release prep: version 0.1.0 (Apache-2.0), `npm run package` (vsce 4.0.0), user README, fake-CLI adapter tests, and `npm run test:boundary`. The owner installed the VSIX and confirmed it works.
   - After that, from owner requests:
@@ -139,24 +139,22 @@ At the end of each development session:
   - Only the `.woff2` fonts ship, in `dist/katex/`, and the CSP adds `font-src` for the extension's own files.
   - Checks: 37 tests; jsdom render of streamed math through `dist/webview.js`; all 20 referenced fonts present.
   - Fix: subscripts, accents and `\phi` showed as gaps in VS Code, because the webview CSP blocked KaTeX's inline style attributes. `style-src` now allows `'unsafe-inline'`; scripts stay nonce-only. Reproduced and confirmed with headless-Chrome screenshots under the old and new CSP.
-- **Model and effort pickers (October 13, branch `model-effort`; owner request; not yet confirmed by the owner in VS Code):**
-  - Two dropdowns below the question box, per chat and saved with history. The last pick is the default for new chats (`contextBridge.{claude,codex}.{model,effort}`, empty = the CLI's default). "Default" passes no flag.
-  - Lists come from the CLIs, so new models need no extension update: Codex `model/list` (paged, hidden models skipped, per-model efforts); Claude aliases and `--effort` levels parsed from `claude --help`, with fallbacks and an "Other…" free-text model.
-  - Passed as `--model`/`--effort` (Claude, also on `--resume`), `model` on thread start/resume plus `model`/`effort` on `turn/start` (app-server), and `-m`/`-c model_reasoning_effort=` (exec).
-  - The footer shows the model the CLI reports (Claude's init event, the app-server thread response).
+- **Model and effort pickers, 0.2.0 (October 13, branch `model-effort`; owner request; the owner confirmed the pickers in VS Code):**
+  - Two dropdowns below the question box, per chat and saved with history. The last pick is the default for new chats (`contextBridge.{claude,codex}.{model,effort}`, empty = the CLI's default). "Default" passes no flag, and its label shows what it currently means, e.g. "Default (Opus 5.5)" and "Default effort (medium)", following the selected model.
+  - Lists and defaults come from the CLIs, so new models need no extension update, and they reload on each New chat:
+    - Claude: the `initialize` control request (every model with its effort levels) and `get_settings` (the `applied` model and effort, honoring user and project settings). Model-specific default efforts come from `get_settings` with `--model X` when picked. Neither request sends a message or creates a session file (checked live). If they fail, the pickers stay hidden.
+    - Codex: `model/list` (paged, hidden models skipped, per-model efforts and defaults) and `config/read` (cwd-aware) for the user's configured model and effort.
+  - Passed as `--model`/`--effort` (Claude, also on `--resume`), `model` on thread start/resume plus `model`/`effort` on `turn/start` (app-server), and `-m`/`-c model_reasoning_effort=` (exec). "Other…" takes a free-text model name.
+  - Live finding: both CLIs silently accept an effort the model doesn't support. ContextBridge drops it before sending, with a chat notice, and resets the chat's effort. Switching models notifies when the effort resets. Models without effort levels (e.g. Haiku 4.5) show a disabled "No effort levels" picker.
+  - Footer: the model the CLI reports, and the effort Claude says it applied (`get_settings` sent before each question); otherwise the validated sent effort or the listed default. Efforts it can't confirm (typed-in models) are marked "(requested)".
   - A rejected model (Claude `model_not_found`; Codex "model is not supported", whose JSON error text is now unwrapped) switches the chat to Default, clears it as the new-chat default, and says so in the chat.
-  - Checks: 47 tests (9 new: fake-CLI flags on first and resumed questions, paged model list, rejected models, help parsing, error unwrapping, history). jsdom check of the pickers and footer against `dist/webview.js` (11 checks). Stubbed-`vscode` host run (16 checks: effort reset on model change, Other… validation, remembered defaults, unavailable-model fallback, history). Live: bad model flagged on both CLIs; Claude haiku→sonnet and Codex gpt-6-luna/low→gpt-6.1-sol/high in resumed conversations; `npm run test:boundary -- claude --model haiku --effort low` and `-- codex --model gpt-6-luna --effort low` passed (new and resumed).
-- **Defaults and effort checks (October 13, branch `model-effort`; owner request after confirming the pickers work):**
-  - Labels show what Default means: "Default (Opus 5.5)", "Default effort (medium)". Claude: `initialize` control request (models with per-model effort levels; replaces help-text parsing, which stays as a fallback) plus `get_settings` (`applied` model/effort, honoring user and project settings). Codex: `config/read` (cwd-aware) plus `model/list` defaults. Model-specific Claude defaults are looked up with `get_settings --model X` when picked. Neither request sends a message, and neither creates a session file (checked live).
-  - Live finding: both CLIs silently accept an effort a model doesn't support. ContextBridge now drops it before sending, with a chat notice, and resets the chat's effort. Switching models notifies when effort resets. Models without effort levels (e.g. Haiku 4.5) show a disabled "No effort levels" picker.
-  - Footer effort: Claude reports what it applied (`get_settings` sent before each question; `null` for models without efforts); otherwise the validated sent effort or the listed default; unconfirmed efforts (typed-in models) are marked "(requested)".
-  - Lists and defaults reload on each New chat.
-  - Checks: 51 tests; jsdom 16 checks; stubbed host 28 checks; live: Default labels for both CLIs, Claude opus-4-6 default `high`, Haiku 4.5 reports no effort, footers for default runs.
+  - Checks: `npm run check` (50 tests); jsdom check of the pickers and footer against `dist/webview.js` (16 checks); stubbed-`vscode` host run (28 checks: effort resets and notices, Other… validation, remembered defaults, lazy default-effort lookup, unsupported-effort drop, unavailable-model fallback, history); headless-Chrome screenshots of the composer at 380px and 250px (labels fit, the row wraps when narrow).
+  - Live: Default labels for both CLIs; Claude opus-4-6 defaults to `high`; Haiku 4.5 reports no effort; bad models flagged on both CLIs; Claude haiku→sonnet and Codex gpt-6-luna/low→gpt-6.1-sol/high in resumed conversations; `npm run test:boundary -- claude --model haiku --effort low` and `-- codex --model gpt-6-luna --effort low` passed (new and resumed).
 - **Next action:** Use it day to day. Later: Marketplace publisher and release.
 - **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex), a documented accepted risk. Agent mode is opt-in (CLAUDE.md decision 9).
 - **Open decisions:** Marketplace publisher identity.
-- **Validation:**
-  - `npm run check` passes: typecheck, 27 tests and build. The tests include Agent mode: full tool set, approvals passed to the user and answered, Deny, cancelling during a pending approval, and Codex workspace-write on first questions and on resume.
+- **Validation** (test counts below are from when each item was checked; currently 50 tests):
+  - `npm run check` passed: typecheck, 27 tests and build. The tests include Agent mode: full tool set, approvals passed to the user and answered, Deny, cancelling during a pending approval, and Codex workspace-write on first questions and on resume.
   - Live, on throwaway repos:
     - Claude Agent mode: an Edit request reached the approval callback. When denied the file was unchanged; when allowed it was edited.
     - Codex Agent mode: edited the workspace file, but writing to `~/` was blocked. Writing to the system temp dir is allowed by Codex's workspace-write default.

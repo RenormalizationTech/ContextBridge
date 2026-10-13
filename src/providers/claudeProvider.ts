@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
-import { ASK_MODE_TOOLS, askModePermission, claudeCatalog, ClaudeStreamParser, claudeModelCatalog, describeToolCall, withLoginHint } from './claudeStream.ts';
+import { ASK_MODE_TOOLS, askModePermission, claudeCatalog, ClaudeStreamParser, describeToolCall, withLoginHint } from './claudeStream.ts';
 import { captureStderr, childEnv, findExecutable, readLines, runQuiet } from './process.ts';
 import type { ModelCatalog, Provider, ProviderEvent, ProviderRequest, ProviderStatus } from './types.ts';
 
@@ -33,7 +33,7 @@ export class ClaudeProvider implements Provider {
     const executable = await findExecutable('claude', this.#configuredPath());
     if (!executable) return undefined;
     const answers = await askControl(executable, cwd, [], ['initialize', 'get_settings']);
-    return claudeCatalog(answers.initialize, answers.get_settings) ?? claudeModelCatalog(await runQuiet(executable, ['--help']));
+    return claudeCatalog(answers.initialize, answers.get_settings);
   }
 
   async defaultEffort(model: string, cwd: string): Promise<string | undefined> {

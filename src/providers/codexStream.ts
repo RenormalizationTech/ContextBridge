@@ -1,4 +1,4 @@
-import { codexError } from './codexAppServerStream.ts';
+import { codexError, unwrapShell } from './codexOutput.ts';
 import type { ProviderEvent } from './types.ts';
 
 // Turns `codex exec --json` events into provider events. Codex sends whole messages, not token deltas.
@@ -50,11 +50,4 @@ export class CodexStreamParser {
         return [];
     }
   }
-}
-
-// `/bin/zsh -lc "cat a.py"` -> `cat a.py`
-export function unwrapShell(command: string): string {
-  const match = command.match(/^\S+ -l?c (["'])([\s\S]*)\1$/);
-  if (!match) return command;
-  return match[1] === '"' ? match[2].replace(/\\(["\\$`])/g, '$1') : match[2];
 }

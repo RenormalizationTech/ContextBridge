@@ -47,7 +47,7 @@ The prompt goes in on **stdin**. `--tools` and `--allowedTools` accept a variabl
 
 **MCP tools (owner decision: keep them all).** Ask mode should keep every MCP tool available. A wildcard `mcp__*` allow rule does **not** work: the call was still denied. A rule per server does work: `mcp__local-searxng` allowed `mcp__local-searxng__search_web`. So the adapter must add one `mcp__<server>` rule per configured server to `--allowedTools`. Server names are normalized in tool names (`claude.ai Claude Docs` → `mcp__claude_ai_Claude_Docs__*`). How to discover servers before launch (`claude mcp list`, or the `init` event's tool list) is to be decided in Phase 4.
 
-**Phase 4 resolution:** no discovery is needed. The adapter runs with `--input-format stream-json --permission-mode default --permission-prompt-tool stdio`. The CLI then sends each permission prompt to the extension as a `control_request` (`can_use_tool`). The extension answers `allow` for read tools and any `mcp__*` tool, and `deny` for everything else. The hard boundary is still `--tools`: write tools don't exist, regardless of what the extension answers. (A plain `claude -p` in stream-json input mode emits no `init` event until it receives the first message, so probing for servers without a model call isn't possible.)
+**Phase 4 resolution:** no discovery is needed. The adapter runs with `--input-format stream-json --permission-mode default --permission-prompt-tool stdio`. The CLI then sends each permission prompt to the extension as a `control_request` (`can_use_tool`). The extension answers `allow` for read tools and any `mcp__*` tool, and `deny` for everything else. The hard boundary is still `--tools`: write tools don't exist, regardless of what the extension answers. (A plain `claude -p` in stream-json input mode emits no `init` event until it receives the first message, so the `init` event's server list isn't available without a model call. Control requests are answered without a message, though; see "Model and effort" below.)
 
 ### Tests
 
@@ -96,12 +96,31 @@ ContextBridge now talks to Codex over `codex app-server --stdio` (JSON-RPC, one 
 - **Cancel:** `turn/interrupt`, then the server is stopped. No `app-server --stdio` or MCP (`node_repl`) processes were left behind.
 - The `codex app-server --listen unix:// --managed-daemon` process seen on the test machine is Codex's own shared daemon, already running before any app-server work. It isn't started or stopped by ContextBridge.
 
+## Model and effort (October 13, 2026)
+
+Checked with Claude Code 2.1.296 and Codex CLI 0.162.1. These are the interfaces behind the model and effort pickers. None of them sends a message, so none makes a model call.
+
+**Claude Code.** In `claude -p --input-format stream-json --output-format stream-json --verbose`, control requests are answered right away, before any user message:
+
+- `initialize` returns `models`: each has `value` (the `--model` argument, e.g. `opus` or `claude-opus-4-6`), `resolvedModel`, `displayName`, and `supportedEffortLevels` (absent for models without effort control, e.g. Haiku 4.5). The `value: "default"` entry is the account default, **not** a `model` from the user's settings.
+- `get_settings` returns `applied: { model, effort }`, the model and effort that will actually be used. It includes user and project settings and `--model`/`--effort` (e.g. `{}` → `claude-opus-5-5`/`medium`; `--model claude-opus-4-6` → `high`; Haiku 4.5 → effort `null`). This request isn't in Claude Code's public docs, so if it stops working, the footer falls back to the `init` event's `model` and the requested effort.
+- Neither request created a session file. Unknown subtypes get an `error` response (`Unsupported control request subtype`).
+- `--model <unknown>` fails the turn: an assistant message with `error: "model_not_found"`, then a `result` with `is_error: true`. An unknown `--effort` value prints a warning and is ignored.
+
+**Codex app-server.**
+
+- `model/list` (paged with `nextCursor`) returns each model's `model` id, `displayName`, `hidden`, `isDefault`, `defaultReasoningEffort`, and `supportedReasoningEfforts`.
+- `config/read` with `cwd` returns the effective config, including project layers. `model` and `model_reasoning_effort` are `null` when unset.
+- `thread/start` / `thread/resume` take `model`. `turn/start` takes `model` and `effort`, which apply to that turn and later ones. The thread response reports `model` and `reasoningEffort` (`null` when unconfigured). No notification reports the effort a turn actually used.
+- An unsupported model fails the turn with an API error passed through as JSON text: `The '<model>' model is not supported when using Codex with a ChatGPT account.`
+
+**Both CLIs silently accept an effort the model doesn't support.** Codex ran GPT-6-Luna with `ultra`, which isn't in its supported list, over both app-server and exec, with no warning. So ContextBridge checks the effort against the CLI's list before sending.
+
 ## Not Yet Checked
 
 - Whether grandchild processes (MCP servers) outlive a cancelled Codex run. Only the direct child was checked.
 - Follow-up questions: resolved in Phase 4 with `--resume <session_id>` (Claude) and `codex exec resume <thread_id>` (Codex). A resumed Codex session stayed read-only (`-c sandbox_mode="read-only"`, because `resume` has no `--sandbox` flag): edit, new file and commit were all blocked.
 - Behavior with a large number of attachments, or large ones.
-- Codex `app-server` protocol (`codex app-server generate-ts`) for streaming.
 
 ## Reproduction
 

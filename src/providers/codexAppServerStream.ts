@@ -1,4 +1,4 @@
-import { unwrapShell } from './codexStream.ts';
+import { codexError, unwrapShell } from './codexOutput.ts';
 import type { ProviderEvent } from './types.ts';
 
 // Turns `codex app-server` notifications into provider events. Unlike `codex exec --json`, the app
@@ -70,18 +70,4 @@ function webSearchEvent(item: any): ProviderEvent[] {
   const action = item.action ?? {};
   const detail = item.query || action.query || action.url || '';
   return [{ type: 'tool', name: action.type === 'openPage' || action.type === 'open_page' ? 'Open page' : 'Web search', detail }];
-}
-
-// Codex passes API errors through as JSON text (`{"type":"error","status":400,"error":{"message":…}}`);
-// shows the inner message, and flags a model the account can't use so the chat can drop it.
-export function codexError(raw: string): ProviderEvent {
-  let message = raw;
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed?.error?.message === 'string') message = parsed.error.message;
-  } catch {
-    // Not JSON: already readable.
-  }
-  const modelUnavailable = /\bmodel\b.*\b(not supported|not found|does not exist|not available|no access)/i.test(message);
-  return { type: 'error', message, ...(modelUnavailable && { modelUnavailable: true }) };
 }

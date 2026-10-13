@@ -19,7 +19,7 @@ ContextBridge isn't on the Marketplace yet. Build and install a VSIX:
 ```sh
 npm install
 npm run package                # writes dist/contextbridge-<version>.vsix
-code --install-extension dist/contextbridge-0.1.0.vsix
+code --install-extension dist/contextbridge-0.2.0.vsix
 ```
 
 If `code` isn't on your PATH, open the Extensions view in VS Code, choose **⋯ → Install from VSIX…**, and pick the file.

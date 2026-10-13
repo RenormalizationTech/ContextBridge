@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ClaudeProvider } from '../src/providers/claudeProvider.ts';
-import { askModePermission, claudeCatalog, ClaudeStreamParser, claudeModelCatalog, describeToolCall } from '../src/providers/claudeStream.ts';
+import { askModePermission, claudeCatalog, ClaudeStreamParser, describeToolCall } from '../src/providers/claudeStream.ts';
 import { codexCatalog } from '../src/providers/codexAppServer.ts';
 import { CodexProvider } from '../src/providers/codexProvider.ts';
-import { CodexAppServerParser, codexError } from '../src/providers/codexAppServerStream.ts';
-import { CodexStreamParser, unwrapShell } from '../src/providers/codexStream.ts';
+import { CodexAppServerParser } from '../src/providers/codexAppServerStream.ts';
+import { codexError, unwrapShell } from '../src/providers/codexOutput.ts';
+import { CodexStreamParser } from '../src/providers/codexStream.ts';
 import type { ProviderEvent } from '../src/providers/types.ts';
 
 const delta = (text: string, parent?: string) => ({
@@ -105,27 +106,6 @@ test('Codex app-server parser shows a web search once its query is known', () =>
   assert.deepEqual(parser.handle('item/completed', { item: { type: 'webSearch', id: 'w1', query: 'rust latest release', action: { type: 'search' } } }), [
     { type: 'tool', name: 'Web search', detail: 'rust latest release' },
   ]);
-});
-
-test('Claude model list comes from the CLI help, with fallbacks', () => {
-  const help = `  --fallback-model <model>  Enable automatic fallback to specified
-                            model(s) when the default model is overloaded
-  --model <model>           Model for the current session. Provide
-                            an alias for the latest model (e.g.
-                            'nova', 'opus', or 'sonnet') or a
-                            model's full name.
-  -n, --name <name>         Set a display name
-  --effort <level>          Effort level for the current session
-                            (low, medium, high)`;
-  const catalog = claudeModelCatalog(help);
-  assert.deepEqual(catalog.models.map((model) => model.id), ['nova', 'opus', 'sonnet', 'fable', 'haiku']);
-  assert.equal(catalog.models[0].label, 'Nova (latest)');
-  assert.deepEqual(catalog.efforts, ['low', 'medium', 'high']);
-  assert.deepEqual(catalog.models[0].efforts, ['low', 'medium', 'high']);
-
-  const fallback = claudeModelCatalog(undefined);
-  assert.deepEqual(fallback.models.map((model) => model.id), ['fable', 'opus', 'sonnet', 'haiku']);
-  assert.deepEqual(fallback.efforts, ['low', 'medium', 'high', 'xhigh', 'max']);
 });
 
 test('Claude parser reports the resolved model from the init event', () => {

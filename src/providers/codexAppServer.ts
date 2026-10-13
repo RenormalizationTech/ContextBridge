@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
+import pkg from '../../package.json' with { type: 'json' };
 import { withLoginHint } from './claudeStream.ts';
 import { CodexAppServerParser } from './codexAppServerStream.ts';
-import { unwrapShell } from './codexStream.ts';
+import { unwrapShell } from './codexOutput.ts';
 import { captureStderr, childEnv, readLines } from './process.ts';
 import type { CodexWebSearch } from './codexProvider.ts';
 import type { ModelCatalog, ProviderEvent, ProviderRequest } from './types.ts';
@@ -13,6 +14,12 @@ const THREAD_SETTINGS = {
   ask: { sandbox: 'read-only', approvalPolicy: 'never' },
   agent: { sandbox: 'read-only', approvalPolicy: 'on-request' },
 } as const;
+
+// The app server's handshake: who's connecting, and no experimental API.
+const INITIALIZE = {
+  clientInfo: { name: 'contextbridge', title: 'ContextBridge', version: pkg.version },
+  capabilities: { experimentalApi: false, requestAttestation: false },
+};
 
 // Runs one question over `codex app-server` (JSON-RPC over stdio): starts or resumes the thread,
 // starts a turn, streams events until the turn completes, then stops the server.
@@ -133,10 +140,7 @@ export async function runAppServerTurn(
   });
 
   try {
-    await call('initialize', {
-      clientInfo: { name: 'contextbridge', title: 'ContextBridge', version: '0.1.0' },
-      capabilities: { experimentalApi: false, requestAttestation: false },
-    });
+    await call('initialize', INITIALIZE);
     send({ method: 'initialized' });
     // Unset model and effort leave the user's Codex config in charge. Both also apply on resume.
     const model = request.model ? { model: request.model } : {};
@@ -198,11 +202,7 @@ export async function listAppServerModels(executable: string, cwd: string, timeo
       }
     });
   });
-  send({
-    id: 1,
-    method: 'initialize',
-    params: { clientInfo: { name: 'contextbridge', title: 'ContextBridge', version: '0.1.0' }, capabilities: { experimentalApi: false, requestAttestation: false } },
-  });
+  send({ id: 1, method: 'initialize', params: INITIALIZE });
   const catalog = await result;
   child.kill('SIGTERM');
   return catalog;

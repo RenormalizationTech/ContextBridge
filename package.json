@@ -2,7 +2,7 @@
   "name": "contextbridge",
   "displayName": "ContextBridge",
   "description": "Copilot-style Ask mode for Claude Code and Codex: attach files and selections, get answers, keep your code untouched.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "contextbridge-dev",
   "license": "Apache-2.0",
   "repository": {

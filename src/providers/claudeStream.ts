@@ -39,7 +39,8 @@ function clip(text: string, limit = 1200): string {
 
 // The pickers' model list from Claude Code's `initialize` control response (every model with its
 // effort levels) and `get_settings` (the model and effort that apply when none is chosen, after
-// the user's Claude settings). Undefined if the CLI didn't answer them.
+// the user's Claude settings). Undefined if the CLI didn't answer them; the pickers then stay
+// hidden and questions use the user's Claude defaults.
 export function claudeCatalog(init: any, settings: any): ModelCatalog | undefined {
   const listed: any[] = (init?.models ?? []).filter((model: any) => typeof model?.value === 'string');
   if (listed.length === 0) return undefined;
@@ -57,25 +58,6 @@ export function claudeCatalog(init: any, settings: any): ModelCatalog | undefine
     defaultModel: resolved
       ? { label: match?.label ?? resolved, efforts: match?.efforts ?? effortsOf(fallback), effort: applied.effort ?? undefined }
       : undefined,
-  };
-}
-
-// Fallback when `initialize` isn't available: the model aliases `claude --help` names (each
-// resolves to that family's latest model) and its --effort levels. The fallbacks are what Claude
-// Code 2.1.296 lists; a full model name can always be typed in.
-const FALLBACK_ALIASES = ['fable', 'opus', 'sonnet', 'haiku'];
-const FALLBACK_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
-
-export function claudeModelCatalog(help: string | undefined): ModelCatalog {
-  const text = (help ?? '').replace(/\s+/g, ' ');
-  const modelHelp = text.match(/(?<![\w-])--model <model> (.*?) --?[a-z]/)?.[1] ?? '';
-  const named = [...modelHelp.matchAll(/'([a-z][\w.-]*)'/g)].map((match) => match[1]);
-  const aliases = [...new Set([...named, ...FALLBACK_ALIASES])];
-  const effortList = text.match(/--effort <level> .*?\(([a-z, ]+)\)/)?.[1];
-  const efforts = effortList ? effortList.split(',').map((level) => level.trim()).filter(Boolean) : FALLBACK_EFFORTS;
-  return {
-    models: aliases.map((alias) => ({ id: alias, label: `${alias.charAt(0).toUpperCase()}${alias.slice(1)} (latest)`, efforts })),
-    efforts,
   };
 }
 
