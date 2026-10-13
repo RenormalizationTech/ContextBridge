@@ -23,6 +23,9 @@ export interface ProviderRequest {
   // Workspace folder the provider process runs in.
   cwd: string;
   mode: Mode;
+  // Model and reasoning effort for this question. Undefined: the CLI's own default (user config).
+  model?: string;
+  effort?: string;
   // Resolves true to allow. Used in Agent mode; must resolve false when the request is cancelled.
   requestPermission: (request: PermissionRequest) => Promise<boolean>;
 }
@@ -30,8 +33,33 @@ export interface ProviderRequest {
 export type ProviderEvent =
   | { type: 'text'; text: string }
   | { type: 'tool'; name: string; detail: string }
+  // The model the CLI is using, shown in the answer footer. effortConfirmed: the CLI reported
+  // the effort it applies (undefined effort then means the model has no effort levels).
+  | { type: 'model'; model: string; effort?: string; effortConfirmed?: boolean }
   | { type: 'done'; cancelled: boolean }
-  | { type: 'error'; message: string };
+  // modelUnavailable: the chosen model doesn't exist or the account can't use it.
+  | { type: 'error'; message: string; modelUnavailable?: boolean };
+
+// A model the user can pick, with the reasoning effort levels it supports (empty: none).
+export interface ModelOption {
+  id: string;
+  label: string;
+  efforts: string[];
+  // The effort used when none is chosen, when the CLI lists it.
+  defaultEffort?: string;
+  // The model id the CLI reports for this choice (an alias resolves to a full id).
+  resolvesTo?: string;
+}
+
+// What the model and effort pickers offer for a provider. Read from the CLI, so new models
+// appear without an extension update.
+export interface ModelCatalog {
+  models: ModelOption[];
+  // Effort levels offered for a typed-in model the CLI doesn't list.
+  efforts: string[];
+  // What "Default" currently means: the CLI's default, after the user's own CLI config.
+  defaultModel?: { label: string; efforts: string[]; effort?: string };
+}
 
 export interface ProviderStatus {
   ok: boolean;
@@ -53,6 +81,11 @@ export interface Provider {
   // reopened chat continues the same CLI conversation.
   readonly conversationId: string | undefined;
   restoreConversation(id: string | undefined): void;
+  // Models and effort levels the CLI offers, with its defaults as seen from `cwd` (project config
+  // can change them). Undefined when it has no model choice (mock) or the list can't be read.
+  listModels(cwd: string): Promise<ModelCatalog | undefined>;
+  // The effort used for `model` when none is chosen, for CLIs whose list doesn't include it.
+  defaultEffort?(model: string, cwd: string): Promise<string | undefined>;
   // Whether the CLI is installed and logged in.
   checkStatus(): Promise<ProviderStatus>;
 }

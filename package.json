@@ -163,10 +163,30 @@
           "default": "",
           "description": "Path to the claude executable. Leave empty to find it automatically."
         },
+        "contextBridge.claude.model": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Claude Code model for new chats: an alias such as `opus` or `sonnet` (the latest model of that family), or a full model name. Empty uses Claude Code's own default. The model picker below the question box changes it."
+        },
+        "contextBridge.claude.effort": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Claude Code effort level for new chats (`low`, `medium`, `high`, `xhigh`, `max`). Empty uses Claude Code's own default. The effort picker below the question box changes it."
+        },
         "contextBridge.codex.path": {
           "type": "string",
           "default": "",
           "description": "Path to the codex executable. Leave empty to find it automatically."
+        },
+        "contextBridge.codex.model": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Codex model for new chats, as listed in the model picker. Empty uses Codex's own default (your Codex config). The model picker below the question box changes it."
+        },
+        "contextBridge.codex.effort": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Codex reasoning effort for new chats, such as `low`, `medium` or `high` (the picker shows what each model supports). Empty uses Codex's own default. The effort picker below the question box changes it."
         },
         "contextBridge.codex.transport": {
           "type": "string",

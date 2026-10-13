@@ -46,11 +46,21 @@ select {
   flex: 0 0 auto;
 }
 
-#permissions {
+#permissions,
+#model,
+#effort {
   flex: 0 1 auto;
   min-width: 0;
   max-width: 60%;
   font-size: 0.9em;
+}
+
+/* Sized to their labels (e.g. "Default effort (medium)"); in a narrow side bar the row wraps
+   instead of cutting the text off. */
+#model,
+#effort {
+  flex: 0 0 auto;
+  max-width: 100%;
 }
 
 #permissions.bypass {
@@ -211,6 +221,17 @@ select {
   margin-top: 6px;
   font-size: 0.9em;
   color: var(--vscode-descriptionForeground);
+}
+
+.turn-model {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.turn-model::before {
+  content: '·';
+  margin-right: 6px;
 }
 
 .turn-footer.cancelled,
@@ -389,6 +410,7 @@ textarea {
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }

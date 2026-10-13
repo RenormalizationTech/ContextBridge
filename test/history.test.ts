@@ -63,3 +63,14 @@ test('history store saves, lists newest first, deletes, prunes, and rejects bad 
   await store.clear();
   assert.deepEqual(await store.list(), []);
 });
+
+test('a chat keeps its model and effort through save and load', () => {
+  const conversation = new Conversation({ providerId: 'codex', model: 'fast-1', effort: 'low' });
+  conversation.append({ type: 'start', question: 'Q', attachments: [], provider: 'Codex', mode: 'ask', at: 1 });
+  conversation.append({ type: 'model', model: 'fast-1', effort: 'low' });
+  const restored = new Conversation(JSON.parse(JSON.stringify(conversation.toJSON())));
+  assert.equal(restored.model, 'fast-1');
+  assert.equal(restored.effort, 'low');
+  assert.ok(isTranscriptMessage({ type: 'model' }), 'the model line is replayed with the chat');
+  assert.equal(new Conversation({ providerId: 'claude' }).model, undefined);
+});

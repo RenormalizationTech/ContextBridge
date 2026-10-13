@@ -11,12 +11,15 @@ export interface StoredConversation {
   providerConversationId?: string;
   // Agent-mode permission level chosen for this chat.
   permissionLevel?: PermissionLevel;
+  // Model and effort chosen for this chat; absent means the CLI's default.
+  model?: string;
+  effort?: string;
   createdAt: number;
   updatedAt: number;
   messages: TranscriptMessage[];
 }
 
-const TRANSCRIPT_TYPES = new Set(['start', 'notice', 'permission', 'permissionResolved', 'text', 'tool', 'done', 'error']);
+const TRANSCRIPT_TYPES = new Set(['start', 'notice', 'permission', 'permissionResolved', 'text', 'model', 'tool', 'done', 'error']);
 
 export function isTranscriptMessage(message: { type: string }): message is TranscriptMessage {
   return TRANSCRIPT_TYPES.has(message.type);
@@ -28,10 +31,12 @@ export class Conversation {
   providerId: string;
   providerConversationId?: string;
   permissionLevel?: PermissionLevel;
+  model?: string;
+  effort?: string;
   updatedAt: number;
   readonly messages: TranscriptMessage[];
 
-  constructor(init: { providerId: string } | StoredConversation) {
+  constructor(init: { providerId: string; model?: string; effort?: string } | StoredConversation) {
     if ('messages' in init) {
       this.id = init.id;
       this.createdAt = init.createdAt;
@@ -39,12 +44,16 @@ export class Conversation {
       this.providerId = init.providerId;
       this.providerConversationId = init.providerConversationId;
       this.permissionLevel = init.permissionLevel;
+      this.model = init.model;
+      this.effort = init.effort;
       this.messages = init.messages.map((message) => ({ ...message }));
       this.#closeInterruptedTurn();
     } else {
       this.id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
       this.createdAt = this.updatedAt = Date.now();
       this.providerId = init.providerId;
+      this.model = init.model;
+      this.effort = init.effort;
       this.messages = [];
     }
   }
@@ -85,6 +94,8 @@ export class Conversation {
       providerId: this.providerId,
       providerConversationId: this.providerConversationId,
       permissionLevel: this.permissionLevel,
+      model: this.model,
+      effort: this.effort,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       messages: this.messages,

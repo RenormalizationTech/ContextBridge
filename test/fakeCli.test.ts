@@ -41,17 +41,45 @@ process.stdin.on('data', (chunk) => {
     if (message.type === 'control_response') {
       log({ permission: message.response.request_id, response: message.response.response });
       pending.get(message.response.request_id)?.();
-    } else if (message.type === 'user') run(message);
+    } else if (message.type === 'control_request') control(message);
+    else if (message.type === 'user') run(message);
   }
 });
 const ask = (id, tool_name, input) => new Promise((resolve) => {
   pending.set(id, resolve);
   out({ type: 'control_request', request_id: id, request: { subtype: 'can_use_tool', tool_name, input } });
 });
+// Control questions ContextBridge asks before (or instead of) a message.
+function control(message) {
+  const args = process.argv.slice(2);
+  const flag = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
+  const reply = (response) => out({ type: 'control_response', response: { subtype: 'success', request_id: message.request_id, response } });
+  const subtype = message.request.subtype;
+  if (mode === 'nosettings' || (subtype !== 'get_settings' && subtype !== 'initialize')) {
+    out({ type: 'control_response', response: { subtype: 'error', request_id: message.request_id, error: 'Unsupported control request subtype: ' + subtype } });
+  } else if (subtype === 'get_settings') {
+    const model = flag('--model');
+    reply({ applied: { model: model ? 'resolved-' + model : 'claude-big-9', effort: model === 'old' ? null : flag('--effort') ?? (model === 'opus' ? 'high' : 'medium') } });
+  } else {
+    reply({ models: [
+      { value: 'default', resolvedModel: 'claude-big-9', displayName: 'Default (recommended)', supportedEffortLevels: ['low', 'medium', 'high', 'max'] },
+      { value: 'opus', resolvedModel: 'resolved-opus', displayName: 'Opus 9', supportedEffortLevels: ['low', 'medium', 'high', 'max'] },
+      { value: 'big', resolvedModel: 'claude-big-9', displayName: 'Big 9', supportedEffortLevels: ['low', 'medium', 'high', 'max'] },
+      { value: 'old', resolvedModel: 'claude-old-1', displayName: 'Old 1' },
+    ] });
+  }
+}
 const delta = (text) => out({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text } } });
 async function run(message) {
   log({ prompt: message.message.content });
-  out({ type: 'system', subtype: 'init', session_id: 'session-1' });
+  const args = process.argv.slice(2);
+  const model = args.includes('--model') ? 'resolved-' + args[args.indexOf('--model') + 1] : undefined;
+  out({ type: 'system', subtype: 'init', session_id: 'session-1', model });
+  if (mode === 'badmodel') {
+    out({ type: 'assistant', error: 'model_not_found', message: { content: [{ type: 'text', text: 'There is an issue with the selected model.' }] } });
+    out({ type: 'result', subtype: 'success', is_error: true, result: 'There is an issue with the selected model.', session_id: 'session-1' });
+    return;
+  }
   if (mode === 'slow') { setInterval(() => delta('more '), 20); return; }
   if (mode === 'waiting') { out({ type: 'control_request', request_id: 'w1', request: { subtype: 'can_use_tool', tool_name: 'Bash', input: { command: 'rm -rf build' } } }); return; }
   await ask('p1', 'Edit', { file_path: 'a.py', old_string: 'a', new_string: 'b' });
@@ -78,13 +106,29 @@ process.stdin.on('data', async (chunk) => {
     if (message.method === undefined) { log({ approvalAnswer: message }); waiting.get(message.id)?.(message); continue; }
     log({ method: message.method, params: message.params });
     if (message.method === 'initialize') send({ id: message.id, result: { userAgent: 'fake' } });
-    if (message.method === 'thread/start') send({ id: message.id, result: { thread: { id: 'thread-' + (++thread) } } });
-    if (message.method === 'thread/resume') send({ id: message.id, result: { thread: { id: message.params.threadId } } });
+    if (message.method === 'thread/start') send({ id: message.id, result: { thread: { id: 'thread-' + (++thread) }, model: message.params.model, reasoningEffort: 'medium' } });
+    if (message.method === 'thread/resume') send({ id: message.id, result: { thread: { id: message.params.threadId }, model: message.params.model, reasoningEffort: 'medium' } });
+    if (message.method === 'config/read') send({ id: message.id, result: { config: mode === 'config' ? { model: 'fast-1', model_reasoning_effort: 'medium' } : { model: null, model_reasoning_effort: null } } });
+    if (message.method === 'model/list') {
+      const efforts = (list) => list.map((reasoningEffort) => ({ reasoningEffort, description: '' }));
+      if (!message.params.cursor) send({ id: message.id, result: { nextCursor: 'page-2', data: [
+        { id: 'fast-1', model: 'fast-1', displayName: 'Fast 1', hidden: false, isDefault: false, defaultReasoningEffort: 'low', supportedReasoningEfforts: efforts(['low', 'medium']) },
+        { id: 'secret', model: 'secret', displayName: 'Secret', hidden: true, isDefault: false, defaultReasoningEffort: 'low', supportedReasoningEfforts: [] },
+      ] } });
+      else send({ id: message.id, result: { nextCursor: null, data: [
+        { id: 'big-2', model: 'big-2', displayName: 'Big 2', hidden: false, isDefault: true, defaultReasoningEffort: 'medium', supportedReasoningEfforts: efforts(['low', 'medium', 'high']) },
+      ] } });
+    }
     if (message.method === 'turn/interrupt') send({ id: message.id, result: {} });
     if (message.method === 'turn/start') {
       const threadId = message.params.threadId;
       send({ id: message.id, result: { turn: { id: 'turn-1' } } });
       send({ method: 'turn/started', params: { threadId, turn: { id: 'turn-1' } } });
+      if (mode === 'badmodel') {
+        const error = { message: JSON.stringify({ type: 'error', status: 400, error: { message: "The 'old-1' model is not supported when using Codex with a ChatGPT account." } }) };
+        send({ method: 'turn/completed', params: { threadId, turn: { id: 'turn-1', status: 'failed', error } } });
+        continue;
+      }
       send({ method: 'item/started', params: { item: { type: 'commandExecution', id: 'c1', command: "/bin/zsh -lc 'cat a.py'" } } });
       if (mode === 'slow') { setInterval(() => send({ method: 'item/agentMessage/delta', params: { itemId: 'm1', delta: 'more ' } }), 20); continue; }
       const approval = await ask('srv-1', 'item/commandExecution/requestApproval', { itemId: 'c2', command: "/bin/zsh -lc 'python3 fix.py'", reason: 'needs write access' });
@@ -120,6 +164,8 @@ interface AskOptions {
   abortAfterEvents?: number;
   abortAfterMs?: number;
   mode?: Mode;
+  model?: string;
+  effort?: string;
   requestPermission?: (request: PermissionRequest) => Promise<boolean>;
 }
 
@@ -131,6 +177,8 @@ async function ask(provider: Provider, options: AskOptions = {}): Promise<Provid
     prompt: 'What does a.py do?',
     cwd: dir,
     mode: options.mode ?? 'ask',
+    model: options.model,
+    effort: options.effort,
     requestPermission: options.requestPermission ?? (async () => assert.fail('Ask mode must not ask the user')),
   };
   await provider.ask(request, (event) => {
@@ -155,6 +203,7 @@ test('Claude adapter: read-only tools, permission answers, streaming, and resume
   const provider = new ClaudeProvider(() => claudePath);
 
   assert.deepEqual(await ask(provider), [
+    { type: 'model', model: 'claude-big-9', effort: 'medium', effortConfirmed: true },
     { type: 'text', text: 'Hello ' },
     { type: 'text', text: 'world' },
     { type: 'done', cancelled: false },
@@ -257,7 +306,7 @@ test('cancelling while an approval is pending ends the request and the process',
     },
   });
   assert.equal(asked, true);
-  assert.deepEqual(events, [{ type: 'done', cancelled: true }]);
+  assert.deepEqual(events.filter((event) => event.type !== 'model'), [{ type: 'done', cancelled: true }]);
   assert.equal(isAlive(readLog()[0].pid), false);
 });
 
@@ -323,4 +372,125 @@ test('Codex app-server: cancelling interrupts the turn and stops the server', as
   const log = readLog();
   assert.ok(log.some((entry) => entry.method === 'turn/interrupt'), 'sends turn/interrupt');
   assert.equal(isAlive(log[0].pid), false);
+});
+
+test('Claude adapter: chosen model and effort are passed on each question, also on resume', async () => {
+  writeFileSync(logFile, '');
+  process.env.FAKE_MODE = 'normal';
+  const provider = new ClaudeProvider(() => claudePath);
+  const events = await ask(provider, { model: 'opus', effort: 'high' });
+  assert.deepEqual(events[0], { type: 'model', model: 'resolved-opus', effort: 'high', effortConfirmed: true }, 'from get_settings');
+  await ask(provider, { model: 'sonnet' });
+  const [first, second] = readLog().filter((entry) => entry.args);
+  assert.deepEqual(first.args.slice(first.args.indexOf('--model'), first.args.indexOf('--model') + 4), ['--model', 'opus', '--effort', 'high']);
+  assert.equal(second.args[second.args.indexOf('--model') + 1], 'sonnet');
+  assert.ok(second.args.includes('--resume'), 'switching models keeps the conversation');
+  assert.ok(!second.args.includes('--effort'));
+
+  // No choice: no flags, so the user's Claude settings decide.
+  provider.resetConversation();
+  writeFileSync(logFile, '');
+  const plain = await ask(provider);
+  assert.deepEqual(plain[0], { type: 'model', model: 'claude-big-9', effort: 'medium', effortConfirmed: true }, 'the CLI default is reported too');
+  assert.ok(!readLog()[0].args.some((arg: string) => arg === '--model' || arg === '--effort'));
+});
+
+test('Claude adapter flags a model the CLI rejects', async () => {
+  writeFileSync(logFile, '');
+  process.env.FAKE_MODE = 'badmodel';
+  const events = await ask(new ClaudeProvider(() => claudePath), { model: 'claude-retired-1' });
+  assert.deepEqual(events.at(-1), { type: 'error', message: 'There is an issue with the selected model.', modelUnavailable: true });
+});
+
+test('Codex app-server: model list with pages, and model and effort on thread and turn', async () => {
+  process.env.FAKE_MODE = 'normal';
+  const provider = new CodexProvider(() => appServerPath);
+  assert.deepEqual(await provider.listModels(dir), {
+    models: [
+      { id: 'fast-1', label: 'Fast 1', efforts: ['low', 'medium'], defaultEffort: 'low' },
+      { id: 'big-2', label: 'Big 2', efforts: ['low', 'medium', 'high'], defaultEffort: 'medium' },
+    ],
+    efforts: ['low', 'medium', 'high'],
+    defaultModel: { label: 'Big 2', efforts: ['low', 'medium', 'high'], effort: 'medium' },
+  });
+  const configRead = readLog().find((entry) => entry.method === 'config/read');
+  assert.equal(configRead.params.cwd, dir, 'project config is read for the workspace');
+
+  // The user's Codex config decides what Default means; its effort applies to any model that supports it.
+  process.env.FAKE_MODE = 'config';
+  const configured = await provider.listModels(dir);
+  assert.deepEqual(configured?.defaultModel, { label: 'Fast 1', efforts: ['low', 'medium'], effort: 'medium' });
+  assert.deepEqual(configured?.models.map((model) => model.defaultEffort), ['medium', 'medium']);
+  process.env.FAKE_MODE = 'normal';
+
+  writeFileSync(logFile, '');
+  const events = await ask(provider, { model: 'fast-1', effort: 'low' });
+  assert.deepEqual(events[0], { type: 'model', model: 'fast-1', effort: 'low' });
+  await ask(provider, { model: 'big-2' });
+  const log = readLog();
+  assert.equal(log.find((entry) => entry.method === 'thread/start').params.model, 'fast-1');
+  const turns = log.filter((entry) => entry.method === 'turn/start');
+  assert.deepEqual([turns[0].params.model, turns[0].params.effort], ['fast-1', 'low']);
+  assert.equal(log.find((entry) => entry.method === 'thread/resume').params.model, 'big-2');
+  assert.deepEqual([turns[1].params.model, 'effort' in turns[1].params], ['big-2', false]);
+
+  // No choice: nothing is sent, so the user's Codex config decides.
+  provider.resetConversation();
+  writeFileSync(logFile, '');
+  await ask(provider);
+  const plain = readLog();
+  assert.ok(!('model' in plain.find((entry) => entry.method === 'thread/start').params));
+  assert.ok(!('effort' in plain.find((entry) => entry.method === 'turn/start').params));
+});
+
+test('Codex app-server: an unsupported model is reported readably and flagged', async () => {
+  writeFileSync(logFile, '');
+  process.env.FAKE_MODE = 'badmodel';
+  const events = await ask(new CodexProvider(() => appServerPath), { model: 'old-1' });
+  assert.deepEqual(events.at(-1), { type: 'error', message: "The 'old-1' model is not supported when using Codex with a ChatGPT account.", modelUnavailable: true });
+});
+
+test('Codex exec: model and effort flags, also on resume', async () => {
+  writeFileSync(logFile, '');
+  process.env.FAKE_MODE = 'normal';
+  const provider = new CodexProvider(() => codexPath, () => 'exec');
+  const events = await ask(provider, { model: 'fast-1', effort: 'low' });
+  assert.deepEqual(events[0], { type: 'model', model: 'fast-1', effort: 'low' });
+  await ask(provider, { model: 'fast-1', effort: 'low' });
+  const [first, , second] = readLog();
+  for (const { args } of [first, second]) {
+    assert.equal(args[args.indexOf('-m') + 1], 'fast-1');
+    assert.ok(args.includes('model_reasoning_effort="low"'));
+  }
+  assert.deepEqual(second.args.slice(0, 2), ['exec', 'resume']);
+});
+
+test('Claude adapter: model list and defaults from control requests, without a message', async () => {
+  writeFileSync(logFile, '');
+  process.env.FAKE_MODE = 'normal';
+  const provider = new ClaudeProvider(() => claudePath);
+  assert.deepEqual(await provider.listModels(dir), {
+    models: [
+      { id: 'opus', label: 'Opus 9', efforts: ['low', 'medium', 'high', 'max'], resolvesTo: 'resolved-opus' },
+      { id: 'big', label: 'Big 9', efforts: ['low', 'medium', 'high', 'max'], resolvesTo: 'claude-big-9' },
+      { id: 'old', label: 'Old 1', efforts: [], resolvesTo: 'claude-old-1' },
+    ],
+    efforts: ['low', 'medium', 'high', 'max'],
+    defaultModel: { label: 'Big 9', efforts: ['low', 'medium', 'high', 'max'], effort: 'medium' },
+  });
+  assert.equal(await provider.defaultEffort('opus', dir), 'high');
+  assert.equal(await provider.defaultEffort('old', dir), undefined);
+  assert.ok(!readLog().some((entry) => entry.prompt), 'no question was sent');
+
+  // Older CLIs without these requests fall back to the help text (fake prints nothing: built-in aliases).
+  process.env.FAKE_MODE = 'nosettings';
+  assert.deepEqual((await provider.listModels(dir))?.models.map((model) => model.id), ['fable', 'opus', 'sonnet', 'haiku']);
+});
+
+test('Claude adapter: without get_settings, the footer gets the init model and the requested effort', async () => {
+  writeFileSync(logFile, '');
+  process.env.FAKE_MODE = 'nosettings';
+  const events = await ask(new ClaudeProvider(() => claudePath), { model: 'opus', effort: 'max' });
+  assert.deepEqual(events.filter((event) => event.type === 'model'), [{ type: 'model', model: 'resolved-opus', effort: 'max' }]);
+  assert.deepEqual(events.at(-1), { type: 'done', cancelled: false });
 });

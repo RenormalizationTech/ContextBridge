@@ -1,9 +1,9 @@
 import { spawn } from 'node:child_process';
 import { withLoginHint } from './claudeStream.ts';
-import { runAppServerTurn } from './codexAppServer.ts';
+import { listAppServerModels, runAppServerTurn } from './codexAppServer.ts';
 import { CodexStreamParser } from './codexStream.ts';
 import { captureStderr, childEnv, findExecutable, readLines, runQuiet } from './process.ts';
-import type { Provider, ProviderEvent, ProviderRequest, ProviderStatus } from './types.ts';
+import type { ModelCatalog, Provider, ProviderEvent, ProviderRequest, ProviderStatus } from './types.ts';
 
 const NOT_FOUND = 'Codex CLI not found. Install it, or set "contextBridge.codex.path" to the codex executable.';
 // `exec` transport only (see codexAppServer.ts for the default app-server transport).
@@ -52,6 +52,12 @@ export class CodexProvider implements Provider {
     this.#threadId = id;
   }
 
+  // Listed through the app server for either transport; it's the only structured model list.
+  async listModels(cwd: string): Promise<ModelCatalog | undefined> {
+    const executable = await findExecutable('codex', this.#configuredPath());
+    return executable ? listAppServerModels(executable, cwd) : undefined;
+  }
+
   async checkStatus(): Promise<ProviderStatus> {
     const executable = await findExecutable('codex', this.#configuredPath());
     if (!executable) return { ok: false, installed: false, detail: NOT_FOUND };
@@ -73,6 +79,8 @@ export class CodexProvider implements Provider {
     }
     const sandbox = SANDBOX[request.mode];
     const config = ['-c', `sandbox_mode="${sandbox}"`, '-c', `web_search="${this.#webSearch()}"`];
+    if (request.model) config.push('-m', request.model);
+    if (request.effort) config.push('-c', `model_reasoning_effort="${request.effort}"`);
     const args = this.#threadId
       ? ['exec', 'resume', '--json', '--skip-git-repo-check', ...config, this.#threadId, '-']
       : ['exec', '--json', '--skip-git-repo-check', ...config, '--sandbox', sandbox, '-'];
@@ -106,6 +114,8 @@ export class CodexProvider implements Provider {
       if (parser.threadId) this.#threadId = parser.threadId;
     });
 
+    // `exec --json` doesn't report the model, so only a chosen one is shown.
+    if (request.model) emit({ type: 'model', model: request.model, effort: request.effort });
     child.stdin.end(request.prompt);
 
     await new Promise<void>((resolve) => {

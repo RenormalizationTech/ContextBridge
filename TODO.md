@@ -112,7 +112,7 @@ At the end of each development session:
 
 ### Latest Handoff
 
-- **Updated:** October 12, 2026 (branch `release-prep`).
+- **Updated:** October 13, 2026 (branch `model-effort`).
 - **Implemented:**
   - Phase 5 release prep: version 0.1.0 (Apache-2.0), `npm run package` (vsce 4.0.0), user README, fake-CLI adapter tests, and `npm run test:boundary`. The owner installed the VSIX and confirmed it works.
   - After that, from owner requests:
@@ -139,6 +139,19 @@ At the end of each development session:
   - Only the `.woff2` fonts ship, in `dist/katex/`, and the CSP adds `font-src` for the extension's own files.
   - Checks: 37 tests; jsdom render of streamed math through `dist/webview.js`; all 20 referenced fonts present.
   - Fix: subscripts, accents and `\phi` showed as gaps in VS Code, because the webview CSP blocked KaTeX's inline style attributes. `style-src` now allows `'unsafe-inline'`; scripts stay nonce-only. Reproduced and confirmed with headless-Chrome screenshots under the old and new CSP.
+- **Model and effort pickers (October 13, branch `model-effort`; owner request; not yet confirmed by the owner in VS Code):**
+  - Two dropdowns below the question box, per chat and saved with history. The last pick is the default for new chats (`contextBridge.{claude,codex}.{model,effort}`, empty = the CLI's default). "Default" passes no flag.
+  - Lists come from the CLIs, so new models need no extension update: Codex `model/list` (paged, hidden models skipped, per-model efforts); Claude aliases and `--effort` levels parsed from `claude --help`, with fallbacks and an "Other…" free-text model.
+  - Passed as `--model`/`--effort` (Claude, also on `--resume`), `model` on thread start/resume plus `model`/`effort` on `turn/start` (app-server), and `-m`/`-c model_reasoning_effort=` (exec).
+  - The footer shows the model the CLI reports (Claude's init event, the app-server thread response).
+  - A rejected model (Claude `model_not_found`; Codex "model is not supported", whose JSON error text is now unwrapped) switches the chat to Default, clears it as the new-chat default, and says so in the chat.
+  - Checks: 47 tests (9 new: fake-CLI flags on first and resumed questions, paged model list, rejected models, help parsing, error unwrapping, history). jsdom check of the pickers and footer against `dist/webview.js` (11 checks). Stubbed-`vscode` host run (16 checks: effort reset on model change, Other… validation, remembered defaults, unavailable-model fallback, history). Live: bad model flagged on both CLIs; Claude haiku→sonnet and Codex gpt-6-luna/low→gpt-6.1-sol/high in resumed conversations; `npm run test:boundary -- claude --model haiku --effort low` and `-- codex --model gpt-6-luna --effort low` passed (new and resumed).
+- **Defaults and effort checks (October 13, branch `model-effort`; owner request after confirming the pickers work):**
+  - Labels show what Default means: "Default (Opus 5.5)", "Default effort (medium)". Claude: `initialize` control request (models with per-model effort levels; replaces help-text parsing, which stays as a fallback) plus `get_settings` (`applied` model/effort, honoring user and project settings). Codex: `config/read` (cwd-aware) plus `model/list` defaults. Model-specific Claude defaults are looked up with `get_settings --model X` when picked. Neither request sends a message, and neither creates a session file (checked live).
+  - Live finding: both CLIs silently accept an effort a model doesn't support. ContextBridge now drops it before sending, with a chat notice, and resets the chat's effort. Switching models notifies when effort resets. Models without effort levels (e.g. Haiku 4.5) show a disabled "No effort levels" picker.
+  - Footer effort: Claude reports what it applied (`get_settings` sent before each question; `null` for models without efforts); otherwise the validated sent effort or the listed default; unconfirmed efforts (typed-in models) are marked "(requested)".
+  - Lists and defaults reload on each New chat.
+  - Checks: 51 tests; jsdom 16 checks; stubbed host 28 checks; live: Default labels for both CLIs, Claude opus-4-6 default `high`, Haiku 4.5 reports no effort, footers for default runs.
 - **Next action:** Use it day to day. Later: Marketplace publisher and release.
 - **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex), a documented accepted risk. Agent mode is opt-in (CLAUDE.md decision 9).
 - **Open decisions:** Marketplace publisher identity.

@@ -14,11 +14,11 @@ let activeChatView: ChatViewProvider | undefined;
 export function activate(context: vscode.ExtensionContext): void {
   const attachments = new AttachmentStore();
   const config = () => vscode.workspace.getConfiguration('contextBridge');
-  const pathSetting = (key: string) => config().get<string>(key)?.trim() || undefined;
+  const stringSetting = (key: string) => config().get<string>(key)?.trim() || undefined;
   const providers = [
-    new ClaudeProvider(() => pathSetting('claude.path')),
+    new ClaudeProvider(() => stringSetting('claude.path')),
     new CodexProvider(
-      () => pathSetting('codex.path'),
+      () => stringSetting('codex.path'),
       () => config().get<CodexTransport>('codex.transport', 'app-server'),
       () => config().get<CodexWebSearch>('codex.webSearch', 'live'),
     ),
@@ -38,6 +38,13 @@ export function activate(context: vscode.ExtensionContext): void {
     memento: context.globalState,
     onProviderSelected: (id) => void config().update('provider', id, vscode.ConfigurationTarget.Global),
     onModeSelected: (mode) => void config().update('mode', mode, vscode.ConfigurationTarget.Global),
+    // Empty settings mean the CLI's own default. Mock has no model choice.
+    defaultModel: (id) => (id === 'mock' ? {} : { model: stringSetting(`${id}.model`), effort: stringSetting(`${id}.effort`) }),
+    onModelSelected: (id, { model, effort }) => {
+      if (id === 'mock') return;
+      void config().update(`${id}.model`, model ?? '', vscode.ConfigurationTarget.Global);
+      void config().update(`${id}.effort`, effort ?? '', vscode.ConfigurationTarget.Global);
+    },
   });
   activeChatView = chatView;
 

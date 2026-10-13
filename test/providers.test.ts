@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ClaudeProvider } from '../src/providers/claudeProvider.ts';
-import { askModePermission, ClaudeStreamParser, describeToolCall } from '../src/providers/claudeStream.ts';
+import { askModePermission, claudeCatalog, ClaudeStreamParser, claudeModelCatalog, describeToolCall } from '../src/providers/claudeStream.ts';
+import { codexCatalog } from '../src/providers/codexAppServer.ts';
 import { CodexProvider } from '../src/providers/codexProvider.ts';
-import { CodexAppServerParser } from '../src/providers/codexAppServerStream.ts';
+import { CodexAppServerParser, codexError } from '../src/providers/codexAppServerStream.ts';
 import { CodexStreamParser, unwrapShell } from '../src/providers/codexStream.ts';
 import type { ProviderEvent } from '../src/providers/types.ts';
 
@@ -104,4 +105,65 @@ test('Codex app-server parser shows a web search once its query is known', () =>
   assert.deepEqual(parser.handle('item/completed', { item: { type: 'webSearch', id: 'w1', query: 'rust latest release', action: { type: 'search' } } }), [
     { type: 'tool', name: 'Web search', detail: 'rust latest release' },
   ]);
+});
+
+test('Claude model list comes from the CLI help, with fallbacks', () => {
+  const help = `  --fallback-model <model>  Enable automatic fallback to specified
+                            model(s) when the default model is overloaded
+  --model <model>           Model for the current session. Provide
+                            an alias for the latest model (e.g.
+                            'nova', 'opus', or 'sonnet') or a
+                            model's full name.
+  -n, --name <name>         Set a display name
+  --effort <level>          Effort level for the current session
+                            (low, medium, high)`;
+  const catalog = claudeModelCatalog(help);
+  assert.deepEqual(catalog.models.map((model) => model.id), ['nova', 'opus', 'sonnet', 'fable', 'haiku']);
+  assert.equal(catalog.models[0].label, 'Nova (latest)');
+  assert.deepEqual(catalog.efforts, ['low', 'medium', 'high']);
+  assert.deepEqual(catalog.models[0].efforts, ['low', 'medium', 'high']);
+
+  const fallback = claudeModelCatalog(undefined);
+  assert.deepEqual(fallback.models.map((model) => model.id), ['fable', 'opus', 'sonnet', 'haiku']);
+  assert.deepEqual(fallback.efforts, ['low', 'medium', 'high', 'xhigh', 'max']);
+});
+
+test('Claude parser reports the resolved model from the init event', () => {
+  const parser = new ClaudeStreamParser('/work');
+  assert.deepEqual(parser.handle({ type: 'system', subtype: 'init', model: 'claude-opus-5-5', session_id: 's' }), [{ type: 'model', model: 'claude-opus-5-5' }]);
+  assert.deepEqual(parser.handle({ type: 'system', subtype: 'status' }), []);
+});
+
+test('Codex errors unwrap API JSON and flag unavailable models only', () => {
+  assert.deepEqual(codexError('{"type":"error","status":400,"error":{"message":"The \'x\' model is not supported when using Codex with a ChatGPT account."}}'), {
+    type: 'error',
+    message: "The 'x' model is not supported when using Codex with a ChatGPT account.",
+    modelUnavailable: true,
+  });
+  assert.deepEqual(codexError('stream disconnected before completion'), { type: 'error', message: 'stream disconnected before completion' });
+  assert.deepEqual(codexError('{"error":{"message":"Rate limit reached"}}'), { type: 'error', message: 'Rate limit reached' });
+});
+
+test('Claude catalog: Default follows the applied model (user settings), else the default entry', () => {
+  const init = { models: [
+    { value: 'default', resolvedModel: 'claude-a-1', displayName: 'Default (recommended)', supportedEffortLevels: ['low', 'high'] },
+    { value: 'a', resolvedModel: 'claude-a-1', displayName: 'A 1', supportedEffortLevels: ['low', 'high'] },
+    { value: 'b', resolvedModel: 'claude-b-2', displayName: 'B 2', supportedEffortLevels: ['low'] },
+  ] };
+  assert.deepEqual(claudeCatalog(init, { applied: { model: 'claude-b-2', effort: 'low' } })?.defaultModel, { label: 'B 2', efforts: ['low'], effort: 'low' });
+  assert.deepEqual(claudeCatalog(init, undefined)?.defaultModel, { label: 'A 1', efforts: ['low', 'high'], effort: undefined });
+  assert.deepEqual(claudeCatalog(init, { applied: { model: 'claude-x-0', effort: null } })?.defaultModel, { label: 'claude-x-0', efforts: ['low', 'high'], effort: undefined });
+  assert.equal(claudeCatalog({ models: [] }, undefined), undefined);
+});
+
+test('Codex catalog: configured effort only where the model supports it', () => {
+  const efforts = (list: string[]) => list.map((reasoningEffort) => ({ reasoningEffort }));
+  const models = [
+    { model: 'm1', displayName: 'M1', isDefault: true, hidden: false, defaultReasoningEffort: 'medium', supportedReasoningEfforts: efforts(['low', 'medium', 'ultra']) },
+    { model: 'm2', displayName: 'M2', isDefault: false, hidden: false, defaultReasoningEffort: 'low', supportedReasoningEfforts: efforts(['low', 'medium']) },
+  ];
+  const catalog = codexCatalog(models, { model: 'custom-x', model_reasoning_effort: 'ultra' });
+  assert.deepEqual(catalog.models.map((model) => model.defaultEffort), ['ultra', 'low']);
+  assert.deepEqual(catalog.defaultModel, { label: 'custom-x', efforts: [], effort: 'ultra' });
+  assert.deepEqual(codexCatalog(models, {}).defaultModel, { label: 'M1', efforts: ['low', 'medium', 'ultra'], effort: 'medium' });
 });

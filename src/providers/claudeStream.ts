@@ -1,5 +1,5 @@
 import { relative, isAbsolute } from 'node:path';
-import type { ProviderEvent } from './types.ts';
+import type { ModelCatalog, ProviderEvent } from './types.ts';
 
 // Built-in tools that exist in Ask mode. Edit, Write, Bash and other tools that can modify the
 // workspace are not in the list, so they don't exist for the model (validated in Phase 1).
@@ -37,6 +37,48 @@ function clip(text: string, limit = 1200): string {
   return text.length > limit ? `${text.slice(0, limit)}\n… (${text.length - limit} more characters)` : text;
 }
 
+// The pickers' model list from Claude Code's `initialize` control response (every model with its
+// effort levels) and `get_settings` (the model and effort that apply when none is chosen, after
+// the user's Claude settings). Undefined if the CLI didn't answer them.
+export function claudeCatalog(init: any, settings: any): ModelCatalog | undefined {
+  const listed: any[] = (init?.models ?? []).filter((model: any) => typeof model?.value === 'string');
+  if (listed.length === 0) return undefined;
+  const effortsOf = (model: any): string[] => (Array.isArray(model?.supportedEffortLevels) ? model.supportedEffortLevels : []);
+  const models = listed
+    .filter((model) => model.value !== 'default')
+    .map((model) => ({ id: model.value as string, label: (model.displayName as string) || model.value, efforts: effortsOf(model), resolvesTo: model.resolvedModel as string | undefined }));
+  const fallback = listed.find((model) => model.value === 'default');
+  const applied = settings?.applied ?? {};
+  const resolved: string | undefined = applied.model ?? fallback?.resolvedModel;
+  const match = models.find((model) => model.resolvesTo === resolved);
+  return {
+    models,
+    efforts: [...new Set(models.flatMap((model) => model.efforts))],
+    defaultModel: resolved
+      ? { label: match?.label ?? resolved, efforts: match?.efforts ?? effortsOf(fallback), effort: applied.effort ?? undefined }
+      : undefined,
+  };
+}
+
+// Fallback when `initialize` isn't available: the model aliases `claude --help` names (each
+// resolves to that family's latest model) and its --effort levels. The fallbacks are what Claude
+// Code 2.1.296 lists; a full model name can always be typed in.
+const FALLBACK_ALIASES = ['fable', 'opus', 'sonnet', 'haiku'];
+const FALLBACK_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+
+export function claudeModelCatalog(help: string | undefined): ModelCatalog {
+  const text = (help ?? '').replace(/\s+/g, ' ');
+  const modelHelp = text.match(/(?<![\w-])--model <model> (.*?) --?[a-z]/)?.[1] ?? '';
+  const named = [...modelHelp.matchAll(/'([a-z][\w.-]*)'/g)].map((match) => match[1]);
+  const aliases = [...new Set([...named, ...FALLBACK_ALIASES])];
+  const effortList = text.match(/--effort <level> .*?\(([a-z, ]+)\)/)?.[1];
+  const efforts = effortList ? effortList.split(',').map((level) => level.trim()).filter(Boolean) : FALLBACK_EFFORTS;
+  return {
+    models: aliases.map((alias) => ({ id: alias, label: `${alias.charAt(0).toUpperCase()}${alias.slice(1)} (latest)`, efforts })),
+    efforts,
+  };
+}
+
 // Turns `claude -p --output-format stream-json --include-partial-messages` events into provider events.
 export class ClaudeStreamParser {
   sessionId?: string;
@@ -44,6 +86,7 @@ export class ClaudeStreamParser {
   #cwd: string;
   #wroteText = false;
   #needsBreak = false;
+  #modelUnavailable = false;
 
   constructor(cwd: string) {
     this.#cwd = cwd;
@@ -56,7 +99,11 @@ export class ClaudeStreamParser {
       case 'stream_event':
         // Subagents stream too; only show the main conversation's text.
         return event.parent_tool_use_id ? [] : this.#streamEvent(event.event);
+      case 'system':
+        return event.subtype === 'init' && typeof event.model === 'string' ? [{ type: 'model', model: event.model }] : [];
       case 'assistant':
+        // An unknown or inaccessible --model arrives as a synthetic assistant message, then an error result.
+        if (event.error === 'model_not_found') this.#modelUnavailable = true;
         return (event.message?.content ?? [])
           .filter((block: any) => block.type === 'tool_use')
           .map((block: any) => ({ type: 'tool', name: toolLabel(block.name), detail: this.#toolDetail(block.input ?? {}) }));
@@ -64,7 +111,7 @@ export class ClaudeStreamParser {
         this.finished = true;
         if (event.is_error || event.subtype !== 'success') {
           const text = typeof event.result === 'string' && event.result ? event.result : `Claude Code stopped (${event.subtype}).`;
-          return [{ type: 'error', message: withLoginHint(text) }];
+          return [{ type: 'error', message: withLoginHint(text), ...(this.#modelUnavailable && { modelUnavailable: true }) }];
         }
         return [{ type: 'done', cancelled: false }];
       default:

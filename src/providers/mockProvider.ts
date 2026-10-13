@@ -1,4 +1,4 @@
-import type { Provider, ProviderEvent, ProviderRequest, ProviderStatus } from './types.ts';
+import type { ModelCatalog, Provider, ProviderEvent, ProviderRequest, ProviderStatus } from './types.ts';
 
 // Streams a canned answer so the editor workflow can be developed without a live account.
 export class MockProvider implements Provider {
@@ -36,6 +36,10 @@ export class MockProvider implements Provider {
   readonly conversationId = undefined;
 
   restoreConversation(): void {}
+
+  async listModels(_cwd: string): Promise<ModelCatalog | undefined> {
+    return undefined;
+  }
 
   async checkStatus(): Promise<ProviderStatus> {
     return { ok: true, installed: true, detail: 'Canned answers for development' };

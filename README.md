@@ -39,6 +39,17 @@ Run `npm install` once in each fresh clone (and again after a `git pull` that ch
 
 Your questions appear in a shaded box, and answers carry the provider's name. While an answer is in progress, a light sweeps around the input box, and a spinner line at the end of the answer shows what the provider is doing and how long it's taken (for example `Read src/calc.py… 4s`). When the answer ends, the line becomes **Done in 14s**, **Cancelled after 5s**, or **Stopped** with the error. An answer keeps running if you switch to another view (Explorer, Copilot Chat, …) and is all there when you come back. Answers are rendered as Markdown. Code blocks are syntax-colored (light and dark palettes follow your theme) and have a **Copy** button. The copy icon at the end of an answer (next to **Done in …**) copies the whole answer as raw Markdown. Math is typeset with KaTeX: `$…$` or `\(…\)` inline, and `$$…$$`, `\[…\]` or a ```` ```math ```` block for display equations. Dollar amounts like "$5 and $10" stay as text, and TeX that can't be parsed is shown as a small inline error. Follow-up questions continue the same conversation. **New chat**, or switching providers, starts a fresh one.
 
+### Model and effort
+
+Two dropdowns below the question box pick the model and reasoning effort for the current chat:
+
+- **Default** passes nothing to the CLI, so your own Claude Code or Codex configuration decides, as in the terminal. The brackets show what that currently is, for example **Default (Opus 5.5)** and **Default effort (medium)**, read from the CLI with your settings applied (Claude Code's `get_settings`; Codex's `config/read` and model list). The default effort follows the selected model.
+- **The lists come from the CLIs.** Claude Code: its `initialize` response (aliases such as Opus and Sonnet, which track the latest model of that family, plus specific versions). Codex: `model/list`, the models your account can use. Each model offers only the effort levels the CLI says it supports. A model without effort levels shows a disabled **No effort levels** picker. **Other…** takes any model name the CLI accepts.
+- **Unsupported efforts are never sent silently.** Both CLIs quietly ignore an effort the model doesn't support, so ContextBridge leaves it out and says so in the chat ("GPT-6-Luna doesn't support "ultra" effort, so it uses its default effort (medium)"). Switching to a model that lacks the chosen effort resets it to Default, with a notice. This can only come up for an effort from settings or history, since the picker doesn't offer unsupported levels.
+- **The footer shows what answered:** the model as the CLI reports it (for example `claude-sonnet-5-5`) and its effort. For Claude Code this is the effort it actually applied. An effort ContextBridge couldn't confirm, such as one sent with a typed-in model, is marked **(requested)**.
+
+Because the lists come from the CLIs, new models appear after you update the CLI, with no ContextBridge update. The lists and defaults are re-read for each new chat. Each chat remembers its choice (also when reopened from History), and the last one you picked becomes the default for new chats with that provider (`contextBridge.claude.model`, `contextBridge.claude.effort`, `contextBridge.codex.model`, `contextBridge.codex.effort`). Changing the model mid-chat applies from the next question and keeps the conversation. If the CLI rejects a model (retired, misspelled, or not on your plan), the chat says so and switches to the default model. The model and effort don't affect what Ask mode allows.
+
 ### Chat history
 
 Click **History** (or run **ContextBridge: Show Chat History**) to reopen a previous chat. Follow-up questions continue the same Claude Code or Codex conversation. Use the trash icon to delete a chat, or **ContextBridge: Clear Chat History** to delete them all.
@@ -97,6 +108,8 @@ Conversations are saved by each CLI like any other session (for example, they ap
 | `contextBridge.provider` | `claude` | `claude`, `codex`, or `mock` (canned answers, for development) |
 | `contextBridge.mode` | `ask` | `ask` or `agent` |
 | `contextBridge.agent.defaultPermissions` | `default` | Agent-mode level for new chats: `default` (Default Permissions) or `bypass` (Bypass Approvals) |
+| `contextBridge.claude.model`, `contextBridge.codex.model` | empty | Model for new chats (empty: the CLI's default). Set by the model picker |
+| `contextBridge.claude.effort`, `contextBridge.codex.effort` | empty | Effort for new chats (empty: the CLI's default). Set by the effort picker |
 | `contextBridge.history.maxChats` | `50` | Chats kept per workspace; `0` turns history off |
 | `contextBridge.claude.path` | empty | Path to `claude` if it isn't found automatically |
 | `contextBridge.codex.path` | empty | Path to `codex` if it isn't found automatically |

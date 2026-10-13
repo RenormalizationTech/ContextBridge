@@ -1,3 +1,4 @@
+import { codexError } from './codexAppServerStream.ts';
 import type { ProviderEvent } from './types.ts';
 
 // Turns `codex exec --json` events into provider events. Codex sends whole messages, not token deltas.
@@ -28,7 +29,7 @@ export class CodexStreamParser {
         return [{ type: 'done', cancelled: false }];
       case 'turn.failed':
         this.finished = true;
-        return [{ type: 'error', message: event.error?.message ?? 'Codex failed to answer.' }];
+        return [codexError(event.error?.message ?? 'Codex failed to answer.')];
       case 'error':
         this.lastError = event.message;
         return [];

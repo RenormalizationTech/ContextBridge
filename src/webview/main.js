@@ -17,8 +17,12 @@ import { renderMarkdown } from './markdown.ts';
   const mode = document.getElementById('mode');
   const agentBanner = document.getElementById('agent-banner');
   const permissions = document.getElementById('permissions');
+  const model = document.getElementById('model');
+  const effort = document.getElementById('effort');
+  // Must match OTHER_MODEL in messages.ts.
+  const OTHER_MODEL = '__other__';
   const permissionCards = new Map();
-  // The answer in progress: { activity, body, progress, label, text, startedAt, timer }.
+  // The answer in progress: { activity, body, progress, label, text, model, startedAt, timer }.
   let turn = null;
   let renderScheduled = false;
   let busy = false;
@@ -58,7 +62,7 @@ import { renderMarkdown } from './markdown.ts';
     progress.append(element('span', 'spinner'), element('span', 'progress-text'));
     node.append(activity, body, progress);
     messages.appendChild(node);
-    turn = { activity, body, progress, label: 'Thinking', text: '', startedAt, timer: undefined };
+    turn = { activity, body, progress, label: 'Thinking', text: '', model: '', startedAt, timer: undefined };
     turn.timer = setInterval(updateProgress, 1000);
     updateProgress();
     scrollToEnd();
@@ -149,6 +153,7 @@ import { renderMarkdown } from './markdown.ts';
       : outcome === 'cancelled'
         ? `Cancelled after ${seconds}s`
         : `Stopped after ${seconds}s`));
+    if (turn.model) footer.appendChild(element('span', 'turn-model', turn.model));
     if (turn.text) footer.appendChild(copyAnswerButton(turn.text));
     if (errorMessage) turn.progress.before(element('div', 'message error', errorMessage));
     turn.progress.replaceWith(footer);
@@ -187,6 +192,33 @@ import { renderMarkdown } from './markdown.ts';
     question.placeholder = value === 'agent'
       ? 'Ask or tell the agent what to do (Enter to send, Shift+Enter for a new line)'
       : 'Ask about your code (Enter to send, Shift+Enter for a new line)';
+  }
+
+  // Model and effort pickers, filled from the list the provider's CLI reports. Hidden for
+  // providers without a model choice, and until the list has loaded.
+  // "Default" shows what it currently means, from the CLI and the user's own CLI config.
+  function renderModels(catalog, selectedModel, selectedEffort, defaultEffort) {
+    model.hidden = effort.hidden = !catalog;
+    if (!catalog) return;
+    const models = [new Option(catalog.defaultModel ? `Default (${catalog.defaultModel.label})` : 'Default model', '')];
+    for (const option of catalog.models) models.push(new Option(option.label, option.id));
+    // A typed-in model, or one the CLI no longer lists.
+    if (selectedModel && !catalog.models.some((option) => option.id === selectedModel)) models.push(new Option(selectedModel, selectedModel));
+    models.push(new Option('Other…', OTHER_MODEL));
+    model.replaceChildren(...models);
+    model.value = selectedModel || '';
+
+    const levels = selectedModel
+      ? catalog.models.find((option) => option.id === selectedModel)?.efforts ?? catalog.efforts
+      : catalog.defaultModel?.efforts ?? catalog.efforts;
+    const noLevels = levels.length === 0 && !selectedEffort;
+    const efforts = [new Option(noLevels ? 'No effort levels' : defaultEffort ? `Default effort (${defaultEffort})` : 'Default effort', '')];
+    for (const level of levels) efforts.push(new Option(`Effort: ${level}`, level));
+    if (selectedEffort && !levels.includes(selectedEffort)) efforts.push(new Option(`Effort: ${selectedEffort}`, selectedEffort));
+    effort.replaceChildren(...efforts);
+    effort.value = selectedEffort || '';
+    // Models without effort levels (e.g. older ones) keep the picker visible but disabled.
+    effort.disabled = noLevels;
   }
 
   function addPermissionCard(message) {
@@ -330,6 +362,8 @@ import { renderMarkdown } from './markdown.ts';
   document.getElementById('add-files').addEventListener('click', () => vscode.postMessage({ type: 'pickFiles' }));
   provider.addEventListener('change', () => vscode.postMessage({ type: 'selectProvider', id: provider.value }));
   mode.addEventListener('change', () => vscode.postMessage({ type: 'selectMode', mode: mode.value }));
+  model.addEventListener('change', () => vscode.postMessage({ type: 'selectModel', model: model.value }));
+  effort.addEventListener('change', () => vscode.postMessage({ type: 'selectEffort', effort: effort.value }));
   permissions.addEventListener('change', () => vscode.postMessage({ type: 'selectPermissionLevel', level: permissions.value }));
 
   function clearConversation() {
@@ -353,6 +387,7 @@ import { renderMarkdown } from './markdown.ts';
       case 'state':
         renderProviders(message.providers, message.providerId);
         renderMode(message.mode, message.providerId, message.permissionLevel);
+        renderModels(message.models, message.model, message.effort, message.defaultEffort);
         renderStatus(message.status);
         renderAttachments(message.attachments);
         break;
@@ -375,6 +410,11 @@ import { renderMarkdown } from './markdown.ts';
         turn.text += message.text;
         setProgress('Writing');
         scheduleRender();
+        break;
+      case 'model':
+        // Shown in the footer: the resolved model the CLI reports (e.g. an alias's full name).
+        // "(requested)": the CLI didn't confirm the effort it applied.
+        if (turn) turn.model = message.effort ? `${message.model} · ${message.effort}${message.requested ? ' (requested)' : ''}` : message.model;
         break;
       case 'notice':
         addActivity(element('div', 'activity-line', message.text));

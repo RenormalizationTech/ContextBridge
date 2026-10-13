@@ -4,7 +4,7 @@ import { CodexAppServerParser } from './codexAppServerStream.ts';
 import { unwrapShell } from './codexStream.ts';
 import { captureStderr, childEnv, readLines } from './process.ts';
 import type { CodexWebSearch } from './codexProvider.ts';
-import type { ProviderEvent, ProviderRequest } from './types.ts';
+import type { ModelCatalog, ProviderEvent, ProviderRequest } from './types.ts';
 
 // Thread settings per mode. Ask: read-only sandbox, and the model can never ask for more.
 // Agent: still read-only by default, but Codex may request escalation, which the user approves
@@ -138,12 +138,16 @@ export async function runAppServerTurn(
       capabilities: { experimentalApi: false, requestAttestation: false },
     });
     send({ method: 'initialized' });
+    // Unset model and effort leave the user's Codex config in charge. Both also apply on resume.
+    const model = request.model ? { model: request.model } : {};
     const thread = threadId
-      ? await call('thread/resume', { threadId, cwd: request.cwd, ...settings })
-      : await call('thread/start', { cwd: request.cwd, ...settings });
+      ? await call('thread/resume', { threadId, cwd: request.cwd, ...settings, ...model })
+      : await call('thread/start', { cwd: request.cwd, ...settings, ...model });
     threadId = thread.thread.id;
+    if (typeof thread.model === 'string') emit({ type: 'model', model: thread.model, effort: request.effort ?? thread.reasoningEffort ?? undefined });
     if (signal.aborted) throw new Error('cancelled');
-    const turn = await call('turn/start', { threadId, input: [{ type: 'text', text: request.prompt, text_elements: [] }] });
+    const effort = request.effort ? { effort: request.effort } : {};
+    const turn = await call('turn/start', { threadId, ...model, ...effort, input: [{ type: 'text', text: request.prompt, text_elements: [] }] });
     parser.turnId ??= turn.turn?.id;
   } catch (error) {
     if (!signal.aborted) emit({ type: 'error', message: withLoginHint(`Codex: ${error instanceof Error ? error.message : String(error)}`) });
@@ -151,6 +155,78 @@ export async function runAppServerTurn(
   }
   await finished;
   return threadId;
+}
+
+// The models this Codex account can use, from the app server's `model/list`, with the effort
+// levels each supports, and what "Default" means: the model and effort in the user's Codex config
+// as seen from `cwd` (`config/read`), else the catalog's default model and its default effort.
+export async function listAppServerModels(executable: string, cwd: string, timeoutMs = 15000): Promise<ModelCatalog | undefined> {
+  const child = spawn(executable, ['app-server', '--stdio'], { cwd, env: await childEnv(), stdio: ['pipe', 'pipe', 'ignore'] });
+  const send = (message: unknown) => {
+    if (child.stdin.writable) child.stdin.write(`${JSON.stringify(message)}\n`);
+  };
+  const models: any[] = [];
+  let config: any;
+  const result = new Promise<ModelCatalog | undefined>((resolve) => {
+    const timer = setTimeout(() => resolve(undefined), timeoutMs);
+    const finish = (catalog: ModelCatalog | undefined) => {
+      clearTimeout(timer);
+      resolve(catalog);
+    };
+    child.on('error', () => finish(undefined));
+    child.on('close', () => finish(undefined));
+    readLines(child, (line) => {
+      let message: any;
+      try {
+        message = JSON.parse(line);
+      } catch {
+        return;
+      }
+      if (message.id === 1) {
+        send({ method: 'initialized' });
+        send({ id: 'config', method: 'config/read', params: { cwd } });
+      } else if (message.id === 'config') {
+        // Without the config, Default still shows the catalog's default.
+        config = message.result?.config ?? {};
+        send({ id: 2, method: 'model/list', params: {} });
+      } else if (typeof message.id === 'number' && message.id >= 2 && message.method === undefined) {
+        if (message.error) return finish(undefined);
+        models.push(...(message.result?.data ?? []));
+        // Large catalogs come in pages.
+        if (message.result?.nextCursor) send({ id: message.id + 1, method: 'model/list', params: { cursor: message.result.nextCursor } });
+        else finish(codexCatalog(models, config));
+      }
+    });
+  });
+  send({
+    id: 1,
+    method: 'initialize',
+    params: { clientInfo: { name: 'contextbridge', title: 'ContextBridge', version: '0.1.0' }, capabilities: { experimentalApi: false, requestAttestation: false } },
+  });
+  const catalog = await result;
+  child.kill('SIGTERM');
+  return catalog;
+}
+
+export function codexCatalog(models: any[], config: any): ModelCatalog {
+  const listed = models.filter((model) => !model.hidden && typeof model.model === 'string');
+  // The user's configured effort applies to any model that supports it.
+  const configEffort: string | undefined = config?.model_reasoning_effort ?? undefined;
+  const options = listed.map((model) => {
+    const efforts = (model.supportedReasoningEfforts ?? []).map((option: any) => option.reasoningEffort).filter(Boolean) as string[];
+    const defaultEffort = configEffort && efforts.includes(configEffort) ? configEffort : model.defaultReasoningEffort ?? undefined;
+    return { id: model.model as string, label: (model.displayName as string) || model.model, efforts, defaultEffort };
+  });
+  const configModel: string | undefined = config?.model ?? undefined;
+  const fallbackId = configModel ?? listed.find((model) => model.isDefault)?.model;
+  const fallback = options.find((option) => option.id === fallbackId);
+  return {
+    models: options,
+    efforts: [...new Set(options.flatMap((option) => option.efforts))],
+    defaultModel: fallbackId
+      ? { label: fallback?.label ?? fallbackId, efforts: fallback?.efforts ?? [], effort: fallback ? fallback.defaultEffort : configEffort }
+      : undefined,
+  };
 }
 
 // What "Always allow" covers: all file changes, or one exact command.

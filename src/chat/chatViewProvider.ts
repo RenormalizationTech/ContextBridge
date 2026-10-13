@@ -1,11 +1,12 @@
+import { homedir } from 'node:os';
 import * as vscode from 'vscode';
 import type { AttachmentStore } from '../context/attachmentStore.ts';
 import { resolveAttachment } from '../context/collect.ts';
 import { applyLimits, buildPrompt } from '../context/payload.ts';
-import type { Mode, PermissionLevel, PermissionRequest, Provider, ProviderStatus } from '../providers/types.ts';
+import type { Mode, ModelCatalog, PermissionLevel, PermissionRequest, Provider, ProviderStatus } from '../providers/types.ts';
 import { Conversation, isTranscriptMessage } from './conversation.ts';
 import type { HistoryStore } from './historyStore.ts';
-import type { HostMessage, WebviewMessage } from './messages.ts';
+import { OTHER_MODEL, type HostMessage, type TranscriptMessage, type WebviewMessage } from './messages.ts';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
   static readonly viewId = 'contextBridge.chat';
@@ -19,6 +20,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   // "Always allow" choices for the current chat only; never saved or written to settings.
   private alwaysAllowed = new Set<string>();
   private readonly statuses = new Map<string, ProviderStatus>();
+  // Model lists read from each CLI, refreshed for each new chat (the user's CLI config may change).
+  private readonly catalogs = new Map<string, ModelCatalog>();
+  // Default efforts of models the list doesn't give one for, looked up as they're picked.
+  private readonly defaultEfforts = new Map<string, string | undefined>();
   private readonly extensionUri: vscode.Uri;
   private readonly providers: readonly Provider[];
   private readonly attachments: AttachmentStore;
@@ -28,6 +33,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private readonly maxChats: () => number;
   private readonly defaultPermissionLevel: () => PermissionLevel;
   private readonly memento: vscode.Memento;
+  private readonly defaultModel: (providerId: string) => ModelChoice;
+  private readonly onModelSelected: (providerId: string, choice: ModelChoice) => void;
   private permissionLevel: PermissionLevel;
   // The chat shown in the view. Its transcript outlives the webview, which VS Code discards
   // whenever the view is hidden (e.g. when switching to another side bar view).
@@ -48,6 +55,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     memento: vscode.Memento;
     onProviderSelected: (id: string) => void;
     onModeSelected: (mode: Mode) => void;
+    // Model and effort for new chats with a provider, and where a picked one is remembered.
+    defaultModel: (providerId: string) => ModelChoice;
+    onModelSelected: (providerId: string, choice: ModelChoice) => void;
   }) {
     this.extensionUri = options.extensionUri;
     this.providers = options.providers;
@@ -61,7 +71,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.permissionLevel = this.defaultPermissionLevel();
     this.onProviderSelected = options.onProviderSelected;
     this.onModeSelected = options.onModeSelected;
-    this.conversation = new Conversation({ providerId: this.providerId });
+    this.defaultModel = options.defaultModel;
+    this.onModelSelected = options.onModelSelected;
+    this.conversation = new Conversation({ providerId: this.providerId, ...this.defaultModel(this.providerId) });
     this.attachments.onDidChange(() => this.postState());
   }
 
@@ -75,7 +87,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.pending?.abort();
     this.providerId = id;
     this.onProviderSelected(id);
-    this.newChat();
+    // refreshStatus loads the new provider's models.
+    this.newChat({ reloadModels: false });
     void this.refreshStatus();
   }
 
@@ -112,14 +125,127 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.scheduleSave();
   }
 
-  newChat(): void {
+  // Per chat, and remembered for new chats with this provider (like Copilot's model picker).
+  // A change mid-chat applies from the next question; the CLI conversation continues.
+  async selectModel(model: string): Promise<void> {
+    if (model === OTHER_MODEL) {
+      const typed = await vscode.window.showInputBox({
+        title: `${this.provider.label} model`,
+        prompt: 'A model name the CLI accepts, such as a full model id.',
+        value: this.conversation.model,
+        validateInput: (value) => (/^[\w.:@/-]+$/.test(value.trim()) ? undefined : 'Use letters, digits and . : @ / - _ only.'),
+      });
+      if (!typed?.trim()) {
+        this.postState();
+        return;
+      }
+      model = typed.trim();
+    }
+    this.setModel({ model: model || undefined, effort: this.conversation.effort });
+  }
+
+  selectEffort(effort: string): void {
+    this.setModel({ model: this.conversation.model, effort: effort || undefined });
+  }
+
+  private setModel(choice: ModelChoice): void {
+    // An effort the new model doesn't support falls back to the default.
+    const efforts = this.effortsFor(choice.model);
+    if (choice.effort && efforts && !efforts.includes(choice.effort)) {
+      this.post({ type: 'notice', text: `${this.modelLabel(choice.model)} ${efforts.length ? `doesn't support "${choice.effort}" effort` : "doesn't have effort levels"}, so effort was reset to Default.` });
+      choice = { ...choice, effort: undefined };
+    }
+    this.conversation.model = choice.model;
+    this.conversation.effort = choice.effort;
+    this.onModelSelected(this.providerId, choice);
+    this.postState();
+    this.scheduleSave();
+  }
+
+  // Effort levels to offer for a model (a guess for typed-in models the CLI doesn't list).
+  private effortsFor(model: string | undefined): string[] | undefined {
+    const catalog = this.catalogs.get(this.providerId);
+    return catalog && (this.knownEfforts(model) ?? catalog.efforts);
+  }
+
+  // Effort levels the CLI says a model supports; undefined when it doesn't say.
+  private knownEfforts(model: string | undefined): string[] | undefined {
+    const catalog = this.catalogs.get(this.providerId);
+    if (!catalog) return undefined;
+    return model === undefined ? catalog.defaultModel?.efforts : catalog.models.find((option) => option.id === model)?.efforts;
+  }
+
+  private modelLabel(model: string | undefined): string {
+    const catalog = this.catalogs.get(this.providerId);
+    if (model === undefined) return catalog?.defaultModel?.label ?? 'The default model';
+    return catalog?.models.find((option) => option.id === model)?.label ?? model;
+  }
+
+  // The effort a model uses when none is chosen, for the "Default effort (…)" label. Looked up
+  // from the CLI when its list doesn't include it; the label updates once the answer arrives.
+  private defaultEffortFor(model: string | undefined): string | undefined {
+    const catalog = this.catalogs.get(this.providerId);
+    if (!catalog) return undefined;
+    if (model === undefined) return catalog.defaultModel?.effort;
+    const listed = catalog.models.find((option) => option.id === model)?.defaultEffort;
+    if (listed) return listed;
+    const provider = this.provider;
+    const key = `${provider.id}:${model}`;
+    if (this.defaultEfforts.has(key) || !provider.defaultEffort) return this.defaultEfforts.get(key);
+    this.defaultEfforts.set(key, undefined);
+    void provider.defaultEffort(model, this.cwd()).then((effort) => {
+      this.defaultEfforts.set(key, effort);
+      if (effort) this.postState();
+    }, () => {});
+    return undefined;
+  }
+
+  private cwd(): string {
+    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? homedir();
+  }
+
+  private async loadModels(): Promise<void> {
+    const provider = this.provider;
+    // Failures keep the previous list, and the next new chat tries again.
+    const catalog = await provider.listModels(this.cwd()).catch(() => undefined);
+    if (!catalog) return;
+    this.catalogs.set(provider.id, catalog);
+    for (const key of this.defaultEfforts.keys()) if (key.startsWith(`${provider.id}:`)) this.defaultEfforts.delete(key);
+    this.postState();
+  }
+
+  // The footer's model line. The effort is what the CLI reports applying, else the one sent (marked
+  // as requested if the CLI doesn't list the model's efforts), else the model's listed default.
+  private footerModel(event: { model: string; effort?: string; effortConfirmed?: boolean }, chosen: string | undefined, sent: string | undefined): TranscriptMessage {
+    if (event.effortConfirmed) return { type: 'model', model: event.model, effort: event.effort };
+    if (sent) return { type: 'model', model: event.model, effort: sent, requested: this.knownEfforts(chosen) === undefined || undefined };
+    const catalog = this.catalogs.get(this.providerId);
+    const listed = catalog?.models.find((option) => option.id === event.model || option.resolvesTo === event.model)?.defaultEffort;
+    return { type: 'model', model: event.model, effort: event.effort ?? listed ?? (chosen === undefined ? catalog?.defaultModel?.effort : undefined) };
+  }
+
+  // The CLI rejected the chat's model (retired, misspelled, or not on this account): use the
+  // default from now on, and stop offering it to new chats.
+  private dropUnavailableModel(conversation: Conversation, providerId: string): void {
+    const model = conversation.model;
+    if (!model) return;
+    conversation.model = undefined;
+    const defaults = this.defaultModel(providerId);
+    if (defaults.model === model) this.onModelSelected(providerId, { model: undefined, effort: defaults.effort });
+    if (conversation !== this.conversation) return;
+    this.post({ type: 'notice', text: `The model "${model}" isn't available, so this chat switched to the default model. Ask again to continue.` });
+    this.postState();
+  }
+
+  newChat(options: { reloadModels?: boolean } = {}): void {
     this.pending?.abort();
     void this.saveNow();
-    this.conversation = new Conversation({ providerId: this.providerId });
+    this.conversation = new Conversation({ providerId: this.providerId, ...this.defaultModel(this.providerId) });
     this.permissionLevel = this.defaultPermissionLevel();
     this.alwaysAllowed = new Set();
     this.provider.resetConversation();
     this.post({ type: 'cleared' });
+    if (options.reloadModels !== false && this.statuses.get(this.providerId)?.ok) void this.loadModels();
   }
 
   async showHistory(): Promise<void> {
@@ -208,8 +334,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     const provider = this.provider;
     this.statuses.delete(provider.id);
     this.postState();
-    this.statuses.set(provider.id, await provider.checkStatus());
+    const status = await provider.checkStatus();
+    this.statuses.set(provider.id, status);
     this.postState();
+    if (status.ok && provider === this.provider) await this.loadModels();
   }
 
   // Once per session: if the saved provider's CLI isn't installed, switch to one that is, so a
@@ -273,6 +401,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case 'selectPermissionLevel':
         void this.selectPermissionLevel(message.level);
         break;
+      case 'selectModel':
+        void this.selectModel(message.model);
+        break;
+      case 'selectEffort':
+        this.selectEffort(message.effort);
+        break;
       case 'permissionResponse':
         this.resolvePermission(message.id, message.allow, message.always === true);
         break;
@@ -307,6 +441,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       providerId: this.providerId,
       mode: this.mode,
       permissionLevel: this.permissionLevel,
+      models: this.catalogs.get(this.providerId),
+      model: this.conversation.model,
+      effort: this.conversation.effort,
+      defaultEffort: this.defaultEffortFor(this.conversation.model),
       status: this.statuses.get(this.providerId),
       attachments: this.attachments.summaries(),
     });
@@ -397,18 +535,45 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           this.post({ type: 'notice', text: `${attachment.path}: content not sent (${attachment.omitted}); sent as a reference only.` });
         }
       }
+      // The CLIs silently ignore an effort the model doesn't support, so it's left out, and the
+      // chat goes back to Default effort. Typed-in models the CLI doesn't list are sent as is.
+      let effort = conversation.effort;
+      const known = this.knownEfforts(conversation.model);
+      if (effort && known && !known.includes(effort)) {
+        const label = this.modelLabel(conversation.model);
+        const fallback = this.defaultEffortFor(conversation.model);
+        this.post({
+          type: 'notice',
+          text: known.length
+            ? `${label} doesn't support "${effort}" effort, so it uses its default effort${fallback ? ` (${fallback})` : ''}. This chat's effort is now Default.`
+            : `${label} doesn't have effort levels, so the "${effort}" effort was left out. This chat's effort is now Default.`,
+        });
+        effort = undefined;
+        conversation.effort = undefined;
+        this.postState();
+      }
       const mode = this.mode;
       await provider.ask(
         {
           prompt: buildPrompt(resolved, question, mode),
           cwd,
           mode,
+          model: conversation.model,
+          effort,
           requestPermission: (request) => this.requestPermission(request, controller.signal),
         },
         (event) => {
           // Recorded as events arrive: after New chat the provider is reset before this request ends.
           conversation.providerConversationId = provider.conversationId ?? conversation.providerConversationId;
-          this.post(event.type === 'done' || event.type === 'error' ? { ...event, at: Date.now() } : event);
+          if (event.type === 'error') {
+            const { modelUnavailable, ...error } = event;
+            this.post({ ...error, at: Date.now() });
+            if (modelUnavailable) this.dropUnavailableModel(conversation, provider.id);
+          } else if (event.type === 'model') {
+            this.post(this.footerModel(event, conversation.model, effort));
+          } else {
+            this.post(event.type === 'done' ? { ...event, at: Date.now() } : event);
+          }
         },
         controller.signal,
       );
@@ -482,6 +647,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       <textarea id="question" rows="3" placeholder="Ask about your code (Enter to send, Shift+Enter for a new line)"></textarea>
     </div>
     <div class="actions">
+      <select id="model" aria-label="Model" title="Model for this chat" hidden></select>
+      <select id="effort" aria-label="Effort" title="Reasoning effort for this chat" hidden></select>
       <select id="permissions" aria-label="Agent permissions" title="How Agent mode handles actions the provider asks about" hidden>
         <option value="default">Default Permissions</option>
         <option value="bypass">Bypass Approvals</option>
@@ -495,6 +662,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 </body>
 </html>`;
   }
+}
+
+export interface ModelChoice {
+  model?: string;
+  effort?: string;
 }
 
 function relativeTime(timestamp: number): string {

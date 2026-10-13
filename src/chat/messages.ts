@@ -1,5 +1,5 @@
 import type { AttachmentSummary } from '../context/attachmentStore.ts';
-import type { Mode, PermissionLevel, PermissionRequest, ProviderStatus } from '../providers/types.ts';
+import type { Mode, ModelCatalog, PermissionLevel, PermissionRequest, ProviderStatus } from '../providers/types.ts';
 
 // Messages between the chat webview (media/main.js) and the extension host.
 export type WebviewMessage =
@@ -10,6 +10,9 @@ export type WebviewMessage =
   | { type: 'selectProvider'; id: string }
   | { type: 'selectMode'; mode: Mode }
   | { type: 'selectPermissionLevel'; level: PermissionLevel }
+  // '' is the CLI's default; OTHER_MODEL asks for a model name.
+  | { type: 'selectModel'; model: string }
+  | { type: 'selectEffort'; effort: string }
   | { type: 'showHistory' }
   | { type: 'permissionResponse'; id: string; allow: boolean; always?: boolean }
   | { type: 'openAttachment'; id: string }
@@ -25,6 +28,13 @@ export type HostMessage =
       providerId: string;
       mode: Mode;
       permissionLevel: PermissionLevel;
+      // Undefined while loading, or when the provider has no model choice.
+      models?: ModelCatalog;
+      // The current chat's choices; undefined is the CLI's default.
+      model?: string;
+      effort?: string;
+      // The effort the chosen model uses when none is chosen, when known.
+      defaultEffort?: string;
       // Undefined while the check is running.
       status?: ProviderStatus;
       attachments: AttachmentSummary[];
@@ -41,6 +51,10 @@ export type TranscriptMessage =
   | ({ type: 'permission'; id: string } & PermissionRequest)
   | { type: 'permissionResolved'; id: string; allow: boolean; always?: boolean }
   | { type: 'text'; text: string }
+  // requested: the effort was asked for, but the CLI didn't confirm it.
+  | { type: 'model'; model: string; effort?: string; requested?: boolean }
   | { type: 'tool'; name: string; detail: string }
   | { type: 'done'; cancelled: boolean; at: number }
   | { type: 'error'; message: string; at: number };
+
+export const OTHER_MODEL = '__other__';

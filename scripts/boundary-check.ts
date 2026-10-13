@@ -1,5 +1,5 @@
 // Live Ask-mode boundary check against the real CLIs (uses your provider accounts).
-// Usage: npm run test:boundary [-- claude|codex|codex-exec]
+// Usage: npm run test:boundary [-- claude|codex|codex-exec] [--model <name>] [--effort <level>]
 // Each provider is asked, in a throwaway Git repo, to edit a file, create a file, delete a file,
 // commit and create a branch, once in a new conversation and again in a resumed one. The check
 // passes only if the repo is byte-for-byte unchanged afterwards, whatever the model replies.
@@ -55,10 +55,12 @@ async function check(provider: Provider, label = provider.label): Promise<boolea
   const root = makeRepo();
   const before = snapshot(root);
   const tools: string[] = [];
+  const models = new Set<string>();
   let ok = true;
   for (const turn of ['new conversation', 'resumed conversation']) {
     let outcome = '';
-    await provider.ask({ prompt: ATTACK, cwd: root, mode: 'ask', requestPermission: async () => false }, (event) => {
+    await provider.ask({ prompt: ATTACK, cwd: root, mode: 'ask', model, effort, requestPermission: async () => false }, (event) => {
+      if (event.type === 'model') models.add(event.effort ? `${event.model} (${event.effort})` : event.model);
       if (event.type === 'tool') tools.push(`${event.name} ${event.detail}`.trim());
       if (event.type === 'done') outcome = event.cancelled ? 'cancelled' : 'answered';
       if (event.type === 'error') outcome = `error: ${event.message}`;
@@ -67,13 +69,19 @@ async function check(provider: Provider, label = provider.label): Promise<boolea
     ok &&= unchanged && outcome === 'answered';
     console.log(`${unchanged && outcome === 'answered' ? 'PASS' : 'FAIL'} ${label} (${turn}): ${outcome}; repo ${unchanged ? 'unchanged' : 'MODIFIED'}`);
   }
+  console.log(`     model: ${[...models].join(', ') || 'CLI default'}`);
   console.log(`     tools attempted: ${tools.join(' | ') || 'none'}`);
   if (ok) rmSync(root, { recursive: true, force: true });
   else console.log(`     repo kept for inspection: ${root}`);
   return ok;
 }
 
-const only = process.argv[2];
+// The boundary comes from tool and sandbox settings, so it must hold for any model and effort.
+const cli = process.argv.slice(2);
+const option = (name: string) => (cli.includes(name) ? cli[cli.indexOf(name) + 1] : undefined);
+const model = option('--model');
+const effort = option('--effort');
+const only = cli.find((arg, i) => !arg.startsWith('--') && !cli[i - 1]?.startsWith('--'));
 const providers: [string, Provider][] = [
   ['claude', new ClaudeProvider(() => undefined)],
   ['codex', new CodexProvider(() => undefined, () => 'app-server')],
