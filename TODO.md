@@ -141,7 +141,7 @@ At the end of each development session:
   - Fix: subscripts, accents and `\phi` showed as gaps in VS Code, because the webview CSP blocked KaTeX's inline style attributes. `style-src` now allows `'unsafe-inline'`; scripts stay nonce-only. Reproduced and confirmed with headless-Chrome screenshots under the old and new CSP.
 - **Next action:** Use it day to day; verify a fresh checkout on the second machine. Later: Marketplace publisher and release.
 - **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex), a documented accepted risk. Agent mode is opt-in (CLAUDE.md decision 9).
-- **Open decisions:** Marketplace publisher identity; whether to keep one long-running Codex app-server per chat (faster follow-ups) instead of one per question.
+- **Open decisions:** Marketplace publisher identity.
 - **Validation:**
   - `npm run check` passes: typecheck, 27 tests and build. The tests include Agent mode: full tool set, approvals passed to the user and answered, Deny, cancelling during a pending approval, and Codex workspace-write on first questions and on resume.
   - Live, on throwaway repos:
