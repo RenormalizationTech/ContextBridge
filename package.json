@@ -1,0 +1,63 @@
+{
+  "name": "contextbridge",
+  "displayName": "ContextBridge",
+  "description": "Copilot-style Ask mode for Claude Code and Codex: attach files and selections, get answers, keep your code untouched.",
+  "version": "0.0.1",
+  "publisher": "contextbridge-dev",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RenormalizationTech/ContextBridge.git"
+  },
+  "private": true,
+  "type": "module",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "main": "./dist/extension.cjs",
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "contextBridge",
+          "title": "ContextBridge",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "contextBridge": [
+        {
+          "type": "webview",
+          "id": "contextBridge.chat",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "contextBridge.open",
+        "title": "Open",
+        "category": "ContextBridge"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/vscode": "~1.100.0",
+    "esbuild": "~0.25.0",
+    "typescript": "~5.9.0"
+  }
+}

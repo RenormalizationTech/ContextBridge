@@ -7,9 +7,9 @@ This is the handoff checklist for continuing development on another machine. Pro
 - [x] Choose ContextBridge as the project name.
 - [x] Define the product direction: one VS Code extension, Claude Code and Codex adapters, explicit attachments, Ask mode.
 - [x] Document MVP goals and milestones.
-- [ ] Implement the extension. No application code, package manifest, build commands, or tests exist yet.
+- [ ] Implement the extension. The Phase 2 scaffold exists (mock provider only).
 
-**Next task:** Phase 2 scaffold, with Claude Code as the first provider.
+**Next task:** Phase 3 (Explorer and selection attachments).
 
 ## Continue on Another Machine
 
@@ -22,11 +22,11 @@ git switch provider-feasibility   # or the current development branch
 For an existing checkout, inspect `git status` and save any local work before updating it with `git pull --ff-only` on the appropriate branch. Reuse an existing development branch when continuing unfinished work.
 
 - [ ] Read `README.md`, `PROJECT_GOALS.md`, and this file.
-- [ ] Install Git and the development tools needed for the next task. For extension implementation, choose and document supported Node.js, package-manager, and VS Code versions.
+- [x] Install Git and the development tools needed for the next task. Supported versions: Node.js 22+ (developed on 24.16), npm, VS Code 1.100+ (developed on 1.141).
 - [x] Install and authenticate the provider CLIs on the machine where they will run, using their supported account workflows.
 - [x] Record the operating system and exact CLI versions used for feasibility checks (see `docs/provider-feasibility.md`).
 - [x] Decide the development environment: local VS Code only (remote extension hosts are out of scope). A headless machine can still run prototype checks.
-- [ ] Once the scaffold exists, document dependency installation, build, test, and extension-debug commands in the README.
+- [x] Once the scaffold exists, document dependency installation, build, test, and extension-debug commands in the README.
 
 “Continue on another machine” means continuing development from this Git repository. Remote execution and remote provider hosting are out of scope.
 
@@ -45,12 +45,12 @@ For an existing checkout, inspect `git status` and save any local work before up
 
 ## Phase 2 — Extension Scaffold
 
-- [ ] Initialize a TypeScript VS Code extension with a package manifest, lockfile, build configuration, and extension-debug configuration.
-- [ ] Create separate modules for context collection, chat state/UI, and provider adapters.
-- [ ] Define shared request, attachment, streaming-event, error, and cancellation interfaces.
-- [ ] Add a command to open ContextBridge and a minimal chat view.
-- [ ] Add a mock provider so editor workflows can be developed without a live account.
-- [ ] Define provider executable discovery for local VS Code.
+- [x] Initialize a TypeScript VS Code extension with a package manifest, lockfile, build configuration, and extension-debug configuration.
+- [x] Create separate modules for context collection, chat state/UI, and provider adapters.
+- [x] Define shared request, attachment, streaming-event, error, and cancellation interfaces.
+- [x] Add a command to open ContextBridge and a minimal chat view.
+- [x] Add a mock provider so editor workflows can be developed without a live account.
+- [ ] Define provider executable discovery for local VS Code (moved to Phase 4 with the Claude adapter).
 
 **Done when:** A fresh checkout can install dependencies, build, and open ContextBridge in a VS Code Extension Development Host with a mock response.
 
@@ -112,9 +112,9 @@ At the end of each development session:
 
 ### Latest Handoff
 
-- **Updated:** October 12, 2026.
-- **Implemented:** Phase 1 feasibility. `prototypes/` (Claude and Codex ask scripts) and `docs/provider-feasibility.md`.
-- **Next action:** Phase 2 extension scaffold; Claude Code adapter first.
+- **Updated:** October 12, 2026 (branch `extension-scaffold`).
+- **Implemented:** Phase 2 scaffold. Manifest, esbuild bundle (`dist/extension.cjs`), F5 launch config, `src/context` (attachment type, prompt assembly), `src/providers` (provider interface, mock), `src/chat` (webview chat with streaming and Cancel), and unit tests.
+- **Next action:** Phase 3 attachments.
 - **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex); their side effects are a documented, accepted risk.
-- **Open decisions:** Claude MCP server discovery for per-server allow rules (wildcard `mcp__*` doesn't work); Codex transport (`exec --json` vs `app-server`); supported Node/VS Code versions.
-- **Validation:** Manual boundary tests on a throwaway Git fixture (edit, new file, commit, worktree, cron, MCP write). All were blocked for both providers, confirmed with git status and file hashes. Both prototypes answered from attachments, and SIGINT cancellation left no provider process. No automated tests yet.
+- **Open decisions:** Claude MCP server discovery for per-server allow rules (wildcard `mcp__*` doesn't work); Codex transport (`exec --json` vs `app-server`); provider executable discovery.
+- **Validation:** `npm run check` passes (typecheck, 4 unit tests, build) in the repo and in a clean copy installed with `npm ci`. A smoke test loading `dist/extension.cjs` with a stubbed `vscode` module registered the view and command, streamed the mock answer, and stopped it on cancel. `vsce package` produced a 9-file VSIX. The owner confirmed the mock chat works in the Extension Development Host (F5).

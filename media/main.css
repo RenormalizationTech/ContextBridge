@@ -1,0 +1,111 @@
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  margin: 0;
+  padding: 0 8px;
+  box-sizing: border-box;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+}
+
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 8px;
+}
+
+.message {
+  margin-bottom: 10px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.45;
+}
+
+.message.user {
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--vscode-input-background);
+}
+
+.message.status,
+.muted {
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+.message.error {
+  color: var(--vscode-errorForeground);
+}
+
+#composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+#attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.9em;
+}
+
+.chip {
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+textarea {
+  resize: vertical;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  padding: 4px;
+}
+
+textarea:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#provider {
+  flex: 1;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
+button {
+  padding: 3px 12px;
+  border: none;
+  border-radius: 2px;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+#cancel {
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
