@@ -316,6 +316,30 @@ select {
   color: var(--vscode-badge-foreground);
 }
 
+/* The automatic current-file chip: outlined instead of filled, dimmed when turned off. */
+.chip.current {
+  background: none;
+  color: var(--vscode-foreground);
+  outline: 1px solid var(--vscode-badge-background);
+  outline-offset: -1px;
+}
+
+/* Plain text rather than a button, so it needs the buttons' padding. */
+.chip.current > span.chip-label {
+  padding: 1px 6px;
+}
+
+.chip.current.off {
+  opacity: 0.6;
+  outline-style: dashed;
+}
+
+.chip-tag {
+  margin-left: 5px;
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground);
+}
+
 .chip.warning {
   outline: 1px solid var(--vscode-editorWarning-foreground);
 }

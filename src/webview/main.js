@@ -280,9 +280,44 @@ import { renderMarkdown } from './markdown.ts';
     status.className = value && !value.ok ? 'error' : 'muted';
   }
 
-  function renderAttachments(items) {
+  // The file open in the editor, attached automatically. × leaves it out of this chat; the dimmed
+  // chip puts it back.
+  function currentFileChip(current) {
+    const ranges = current.selections.map((range) => `${range.start}-${range.end}`).join(', ');
+    const name = ranges ? `${current.path}:${ranges}` : current.path;
+    const kind = ranges ? 'selection' : 'current file';
+    const chip = element('span', `chip current${current.enabled ? '' : ' off'}${current.note && current.enabled ? ' warning' : ''}`);
+    if (!current.enabled) {
+      const add = element('button', 'chip-label', `+ ${name}`);
+      add.type = 'button';
+      add.title = `Attach the ${kind} open in the editor`;
+      add.appendChild(element('span', 'chip-tag', kind));
+      add.addEventListener('click', () => vscode.postMessage({ type: 'setCurrentFile', enabled: true }));
+      chip.appendChild(add);
+      return chip;
+    }
+    const label = element('span', 'chip-label', name);
+    label.title = [
+      ranges
+        ? 'Your selection in the editor, attached automatically (read when you send)'
+        : 'The file open in the editor, attached automatically (read when you send). Select text to send only that part.',
+      current.note,
+    ].filter(Boolean).join('\n');
+    label.appendChild(element('span', 'chip-tag', kind));
+    const remove = element('button', 'chip-remove', '×');
+    remove.type = 'button';
+    remove.title = 'Leave the current file out of this chat';
+    remove.setAttribute('aria-label', `Leave ${name} out of this chat`);
+    remove.addEventListener('click', () => vscode.postMessage({ type: 'setCurrentFile', enabled: false }));
+    chip.append(label, remove);
+    return chip;
+  }
+
+  function renderAttachments(items, current) {
     attachments.replaceChildren();
+    if (current) attachments.appendChild(currentFileChip(current));
     if (items.length === 0) {
+      if (current) return;
       const empty = document.createElement('span');
       empty.className = 'muted';
       empty.textContent = 'Add files with +, or right-click a file or selection.';
@@ -389,7 +424,7 @@ import { renderMarkdown } from './markdown.ts';
         renderMode(message.mode, message.providerId, message.permissionLevel);
         renderModels(message.models, message.model, message.effort, message.defaultEffort);
         renderStatus(message.status);
-        renderAttachments(message.attachments);
+        renderAttachments(message.attachments, message.currentFile);
         break;
       case 'start':
         addUserTurn(message.question, message.attachments);

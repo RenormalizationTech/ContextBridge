@@ -1,12 +1,14 @@
 import { homedir } from 'node:os';
 import * as vscode from 'vscode';
-import type { AttachmentStore } from '../context/attachmentStore.ts';
+import { formatBytes, type AttachmentStore } from '../context/attachmentStore.ts';
 import { resolveAttachment } from '../context/collect.ts';
-import { applyLimits, buildPrompt } from '../context/payload.ts';
+import type { CurrentFileTracker } from '../context/currentFile.ts';
+import { applyLimits, buildPrompt, MAX_ATTACHMENT_BYTES } from '../context/payload.ts';
+import type { Attachment } from '../context/types.ts';
 import type { Mode, ModelCatalog, PermissionLevel, PermissionRequest, Provider, ProviderStatus } from '../providers/types.ts';
 import { Conversation, isTranscriptMessage } from './conversation.ts';
 import type { HistoryStore } from './historyStore.ts';
-import { OTHER_MODEL, type HostMessage, type TranscriptMessage, type WebviewMessage } from './messages.ts';
+import { OTHER_MODEL, type CurrentFileState, type HostMessage, type TranscriptMessage, type WebviewMessage } from './messages.ts';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
   static readonly viewId = 'contextBridge.chat';
@@ -36,6 +38,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private readonly defaultModel: (providerId: string) => ModelChoice;
   private readonly onModelSelected: (providerId: string, choice: ModelChoice) => void;
   private permissionLevel: PermissionLevel;
+  private readonly currentFile: CurrentFileTracker;
+  private readonly attachCurrentFile: () => boolean;
+  // Per chat: × on the current-file chip turns it off until it's clicked again or a new chat starts.
+  private currentFileEnabled: boolean;
   // The chat shown in the view. Its transcript outlives the webview, which VS Code discards
   // whenever the view is hidden (e.g. when switching to another side bar view).
   private conversation: Conversation;
@@ -48,6 +54,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     providerId: string;
     mode: Mode;
     attachments: AttachmentStore;
+    // The active editor's file, attached automatically (contextBridge.attachCurrentFile).
+    currentFile: CurrentFileTracker;
+    attachCurrentFile: () => boolean;
     history: HistoryStore;
     maxChats: () => number;
     defaultPermissionLevel: () => PermissionLevel;
@@ -75,6 +84,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.onModelSelected = options.onModelSelected;
     this.conversation = new Conversation({ providerId: this.providerId, ...this.defaultModel(this.providerId) });
     this.attachments.onDidChange(() => this.postState());
+    this.currentFile = options.currentFile;
+    this.attachCurrentFile = options.attachCurrentFile;
+    this.currentFileEnabled = this.attachCurrentFile();
+    this.currentFile.onDidChange(() => this.postState());
   }
 
   private get provider(): Provider {
@@ -237,14 +250,22 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.postState();
   }
 
+  // For the current chat; new chats start from contextBridge.attachCurrentFile.
+  setCurrentFileEnabled(enabled: boolean): void {
+    this.currentFileEnabled = enabled;
+    this.postState();
+  }
+
   newChat(options: { reloadModels?: boolean } = {}): void {
     this.pending?.abort();
     void this.saveNow();
     this.conversation = new Conversation({ providerId: this.providerId, ...this.defaultModel(this.providerId) });
     this.permissionLevel = this.defaultPermissionLevel();
     this.alwaysAllowed = new Set();
+    this.currentFileEnabled = this.attachCurrentFile();
     this.provider.resetConversation();
     this.post({ type: 'cleared' });
+    this.postState();
     if (options.reloadModels !== false && this.statuses.get(this.providerId)?.ok) void this.loadModels();
   }
 
@@ -308,6 +329,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.conversation = new Conversation(stored);
     this.permissionLevel = stored.permissionLevel ?? this.defaultPermissionLevel();
     this.alwaysAllowed = new Set();
+    this.currentFileEnabled = this.attachCurrentFile();
     this.provider.restoreConversation(stored.providerConversationId);
     this.post({ type: 'restore', messages: this.conversation.messages });
     this.reveal();
@@ -428,6 +450,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case 'clearAttachments':
         this.attachments.clear();
         break;
+      case 'setCurrentFile':
+        this.setCurrentFileEnabled(message.enabled === true);
+        break;
       case 'pickFiles':
         void vscode.commands.executeCommand('contextBridge.pickFiles');
         break;
@@ -447,7 +472,28 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       defaultEffort: this.defaultEffortFor(this.conversation.model),
       status: this.statuses.get(this.providerId),
       attachments: this.attachments.summaries(),
+      currentFile: this.currentFileState(),
     });
+  }
+
+  private currentFileState(): CurrentFileState | undefined {
+    const current = this.currentFile.current;
+    if (!current || this.implicitAttachments().length === 0) return undefined;
+    const tooLarge = current.selections.length === 0 && current.sizeBytes > MAX_ATTACHMENT_BYTES;
+    return {
+      path: current.path,
+      selections: current.selections,
+      enabled: this.currentFileEnabled,
+      note: tooLarge ? `Too large (${formatBytes(current.sizeBytes)}): sent as a reference only` : undefined,
+    };
+  }
+
+  // The current file's attachments, minus what the user already attached by hand (the whole file,
+  // or the same selection), so nothing is sent twice.
+  private implicitAttachments(): Attachment[] {
+    const explicit = this.attachments.items;
+    return this.currentFile.attachments().filter((implicit) => !explicit.some((item) =>
+      item.uri === implicit.uri && (item.kind === 'file' || (implicit.kind === 'selection' && item.range.start === implicit.range.start && item.range.end === implicit.range.end))));
   }
 
   private requestPermission(request: PermissionRequest, signal: AbortSignal): Promise<boolean> {
@@ -526,10 +572,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.pending = controller;
     const conversation = this.conversation;
     const provider = this.provider;
-    const sent = this.attachments.summaries().map((item) => (item.range ? `${item.path}:${item.range.start}-${item.range.end}` : item.path));
+    // The current file is read now: its selection at send time, else the whole file.
+    const implicit = this.currentFileEnabled ? this.implicitAttachments() : [];
+    const items = [...this.attachments.items, ...implicit];
+    const sent = items.map((item) => (item.kind === 'selection' ? `${item.path}:${item.range.start}-${item.range.end}` : item.path));
     this.post({ type: 'start', question, attachments: sent, provider: provider.label, mode: this.mode, at: Date.now() });
     try {
-      const resolved = applyLimits(await Promise.all(this.attachments.items.map(resolveAttachment)));
+      const resolved = applyLimits(await Promise.all(items.map(async (item) => ({ ...(await resolveAttachment(item)), current: implicit.includes(item) || undefined }))));
       for (const attachment of resolved) {
         if (attachment.omitted !== undefined) {
           this.post({ type: 'notice', text: `${attachment.path}: content not sent (${attachment.omitted}); sent as a reference only.` });

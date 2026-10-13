@@ -158,6 +158,11 @@
           "default": "default",
           "description": "Agent-mode permission level for new chats. You can change it per chat from the picker below the question box."
         },
+        "contextBridge.attachCurrentFile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Attach the file open in the editor to each question, like Copilot's current-file context. With text selected, the selection is sent instead of the whole file. Click × on its chip to turn it off for one chat."
+        },
         "contextBridge.claude.path": {
           "type": "string",
           "default": "",

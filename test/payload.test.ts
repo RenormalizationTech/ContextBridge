@@ -46,7 +46,7 @@ test('applyLimits omits oversized attachments and stops at the total limit', () 
     { path: 'missing.ts', omitted: 'file not found' },
   ]);
   assert.equal(result[0].text, 'ok');
-  assert.deepEqual(result[1], { path: 'big.ts', range: undefined, omitted: 'too large to include' });
+  assert.deepEqual(result[1], { path: 'big.ts', omitted: 'too large to include' });
   const included = result.filter((attachment) => attachment.text !== undefined).map((attachment) => attachment.path);
   assert.deepEqual(included, ['small.ts', 'part0.ts', 'part1.ts', 'part2.ts']);
   assert.equal(result.at(-2)?.omitted, 'over the total attachment size limit');
@@ -56,4 +56,19 @@ test('applyLimits omits oversized attachments and stops at the total limit', () 
 test('isBinary detects NUL bytes', () => {
   assert.equal(isBinary(new TextEncoder().encode('plain text\n')), false);
   assert.equal(isBinary(Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x1a])), true);
+});
+
+test('the current file is marked as open in the editor, and keeps the mark when too large', () => {
+  const prompt = buildPrompt([
+    { path: 'chosen.py', text: 'a = 1' },
+    { path: 'open.py', range: { start: 3, end: 4 }, text: 'b = 2', current: true },
+  ], 'Why?');
+  assert.match(prompt, /Attachments marked open-in-editor are what the user has open \(or selected\) in the editor/);
+  assert.match(prompt, /<attachment path="chosen.py">\na = 1/);
+  assert.match(prompt, /<attachment path="open.py" lines 3-4 open-in-editor="true">\nb = 2/);
+  assert.doesNotMatch(buildPrompt([{ path: 'chosen.py', text: 'a' }], 'Q'), /open-in-editor/);
+
+  const [omitted] = applyLimits([{ path: 'huge.py', text: 'x'.repeat(MAX_ATTACHMENT_BYTES + 1), current: true }]);
+  assert.deepEqual(omitted, { path: 'huge.py', current: true, omitted: 'too large to include' });
+  assert.match(buildPrompt([omitted], 'Q'), /<attachment path="huge.py" open-in-editor="true" omitted="too large to include" \/>/);
 });

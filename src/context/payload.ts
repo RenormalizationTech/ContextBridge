@@ -16,12 +16,9 @@ export function applyLimits(attachments: readonly ResolvedAttachment[]): Resolve
   return attachments.map((attachment) => {
     if (attachment.text === undefined) return attachment;
     const bytes = encoder.encode(attachment.text).length;
-    if (bytes > MAX_ATTACHMENT_BYTES) {
-      return { path: attachment.path, range: attachment.range, omitted: 'too large to include' };
-    }
-    if (total + bytes > MAX_TOTAL_BYTES) {
-      return { path: attachment.path, range: attachment.range, omitted: 'over the total attachment size limit' };
-    }
+    const { text: _, ...reference } = attachment;
+    if (bytes > MAX_ATTACHMENT_BYTES) return { ...reference, omitted: 'too large to include' };
+    if (total + bytes > MAX_TOTAL_BYTES) return { ...reference, omitted: 'over the total attachment size limit' };
     total += bytes;
     return attachment;
   });
@@ -31,13 +28,16 @@ export function applyLimits(attachments: readonly ResolvedAttachment[]): Resolve
 // Same format as the validated Phase 1 prototypes (prototypes/common.mjs).
 export function buildPrompt(attachments: readonly ResolvedAttachment[], question: string, mode: Mode = 'ask'): string {
   const sections = attachments.map((attachment) => {
-    const range = attachment.range ? ` lines ${attachment.range.start}-${attachment.range.end}` : '';
+    const range = (attachment.range ? ` lines ${attachment.range.start}-${attachment.range.end}` : '') + (attachment.current ? ' open-in-editor="true"' : '');
     if (attachment.omitted !== undefined) {
       return `<attachment path="${attachment.path}"${range} omitted="${attachment.omitted}" />`;
     }
     return `<attachment path="${attachment.path}"${range}>\n${attachment.text}\n</attachment>`;
   });
   const preface = ['The user attached the following context. Focus your answer on it.'];
+  if (attachments.some((attachment) => attachment.current)) {
+    preface.push('Attachments marked open-in-editor are what the user has open (or selected) in the editor, attached automatically. Use them when the question is about them; otherwise ignore them.');
+  }
   if (attachments.some((attachment) => attachment.omitted !== undefined)) {
     preface.push('Content marked omitted was not included; read those files yourself if needed.');
   }

@@ -31,6 +31,7 @@ Run `npm install` once in each fresh clone (and again after a `git pull` that ch
 1. Open the chat with **ContextBridge: Open**. It appears in the secondary (right) side bar, next to Copilot Chat if you use it. Use **View → Appearance → Secondary Side Bar** if it's hidden.
 2. Pick **Claude Code** or **Codex**, and **Ask** or **Agent**, from the dropdowns. The line underneath shows whether the CLI was found and is logged in.
 3. Attach context:
+   - **Current file (automatic):** like Copilot, the file open in the editor is attached to each question. It appears as an outlined chip marked **current file**, which follows you as you switch files. Select text to send only the selection (the chip then says **selection**). Click **×** to leave it out of the current chat, and click the dimmed chip to bring it back. New chats start with it on; turn that off with `contextBridge.attachCurrentFile`. Only real files count: not settings, output panels or diff views. The model is told it was attached automatically, so questions about something else aren't steered toward it.
    - **+ button:** click **+** next to the attachments to search open editors and workspace files (select several), or to add the current selection.
    - **Files:** right-click files in the Explorer (multi-select works) or an editor tab and choose **Add File to ContextBridge**.
    - **Selections:** right-click selected code and choose **Add Selection to ContextBridge**. With nothing selected, it attaches the whole file.
@@ -60,7 +61,8 @@ Click **History** (or run **ContextBridge: Show Chat History**) to reopen a prev
 
 ### How attachments behave
 
-- A file's current content, including unsaved edits, is read **when you send**. A selection is a snapshot taken **when you attach it**.
+- A file's current content, including unsaved edits, is read **when you send**. A selection is a snapshot taken **when you attach it**. The current file and its selection are both read when you send.
+- If you also attach the current file by hand, it's sent once.
 - Every question re-sends the current attachments. The files sent are listed under each question.
 - A file over 256 KB, content beyond 1 MB in total, or a file missing at send time is sent as a path-only reference, and the chat tells you. Binary files and folders are refused.
 - **Attachments set the focus; they don't restrict access.** The provider can still read other files in your workspace, as it would from the terminal.
@@ -110,6 +112,7 @@ Conversations are saved by each CLI like any other session (for example, they ap
 | --- | --- | --- |
 | `contextBridge.provider` | `claude` | `claude`, `codex`, or `mock` (canned answers, for development) |
 | `contextBridge.mode` | `ask` | `ask` or `agent` |
+| `contextBridge.attachCurrentFile` | `true` | Attach the file open in the editor (or its selection) to each question |
 | `contextBridge.agent.defaultPermissions` | `default` | Agent-mode level for new chats: `default` (Default Permissions) or `bypass` (Bypass Approvals) |
 | `contextBridge.claude.model`, `contextBridge.codex.model` | empty | Model for new chats (empty: the CLI's default). Set by the model picker |
 | `contextBridge.claude.effort`, `contextBridge.codex.effort` | empty | Effort for new chats (empty: the CLI's default). Set by the effort picker |

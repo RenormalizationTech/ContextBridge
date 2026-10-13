@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { isBinary } from './payload.ts';
-import type { Attachment, NewAttachment, ResolvedAttachment } from './types.ts';
+import type { Attachment, LineRange, NewAttachment, ResolvedAttachment } from './types.ts';
 
 export type CollectResult = { ok: true; attachment: NewAttachment } | { ok: false; reason: string };
 
@@ -27,25 +27,28 @@ export async function collectFile(uri: vscode.Uri): Promise<CollectResult> {
 
 // One attachment per non-empty selection; with no selection, the whole file.
 export async function collectSelections(editor: vscode.TextEditor): Promise<CollectResult[]> {
-  const selections = editor.selections.filter((selection) => !selection.isEmpty);
-  if (selections.length === 0) return [await collectFile(editor.document.uri)];
-  return selections.map((selection) => {
-    // A selection ending at the start of a line does not include that line.
-    const endLine = selection.end.character === 0 && selection.end.line > selection.start.line
-      ? selection.end.line - 1
-      : selection.end.line;
-    const range = new vscode.Range(selection.start.line, 0, endLine, editor.document.lineAt(endLine).text.length);
-    return {
-      ok: true,
-      attachment: {
-        kind: 'selection',
-        uri: editor.document.uri.toString(),
-        path: displayPath(editor.document.uri),
-        range: { start: selection.start.line + 1, end: endLine + 1 },
-        text: editor.document.getText(range),
-      },
-    };
-  });
+  const ranges = selectedLines(editor);
+  if (ranges.length === 0) return [await collectFile(editor.document.uri)];
+  return ranges.map((range) => ({
+    ok: true,
+    attachment: { kind: 'selection', uri: editor.document.uri.toString(), path: displayPath(editor.document.uri), range, text: linesText(editor.document, range) },
+  }));
+}
+
+// The editor's non-empty selections as whole lines (1-based), top to bottom. A selection ending
+// at the start of a line does not include that line.
+export function selectedLines(editor: vscode.TextEditor): LineRange[] {
+  return editor.selections
+    .filter((selection) => !selection.isEmpty)
+    .map((selection) => {
+      const endLine = selection.end.character === 0 && selection.end.line > selection.start.line ? selection.end.line - 1 : selection.end.line;
+      return { start: selection.start.line + 1, end: endLine + 1 };
+    })
+    .sort((a, b) => a.start - b.start);
+}
+
+export function linesText(document: vscode.TextDocument, range: LineRange): string {
+  return document.getText(new vscode.Range(range.start - 1, 0, range.end - 1, document.lineAt(range.end - 1).text.length));
 }
 
 // Reads current content at send time. Files that disappeared or became binary are omitted, not dropped.

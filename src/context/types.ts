@@ -19,4 +19,6 @@ export interface ResolvedAttachment {
   range?: LineRange;
   text?: string;
   omitted?: string;
+  // Attached automatically because it's open in the editor (not chosen by the user).
+  current?: boolean;
 }

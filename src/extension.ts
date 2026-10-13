@@ -3,6 +3,7 @@ import { ChatViewProvider } from './chat/chatViewProvider.ts';
 import { HistoryStore } from './chat/historyStore.ts';
 import { AttachmentStore } from './context/attachmentStore.ts';
 import { collectFile, collectSelections, type CollectResult } from './context/collect.ts';
+import { CurrentFileTracker } from './context/currentFile.ts';
 import { pickFiles } from './context/picker.ts';
 import { ClaudeProvider } from './providers/claudeProvider.ts';
 import { CodexProvider, type CodexTransport, type CodexWebSearch } from './providers/codexProvider.ts';
@@ -26,12 +27,16 @@ export function activate(context: vscode.ExtensionContext): void {
   ];
   // Per-workspace storage, like VS Code's own chat history.
   const storage = context.storageUri ?? context.globalStorageUri;
+  const currentFile = new CurrentFileTracker();
+  context.subscriptions.push(currentFile);
   const chatView = new ChatViewProvider({
     extensionUri: context.extensionUri,
     providers,
     providerId: config().get<string>('provider', 'claude'),
     mode: config().get<Mode>('mode', 'ask'),
     attachments,
+    currentFile,
+    attachCurrentFile: () => config().get<boolean>('attachCurrentFile', true),
     history: new HistoryStore(vscode.Uri.joinPath(storage, 'chats').fsPath),
     maxChats: () => config().get<number>('history.maxChats', 50),
     defaultPermissionLevel: () => config().get<PermissionLevel>('agent.defaultPermissions', 'default'),
@@ -93,6 +98,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration('contextBridge.provider')) chatView.selectProvider(config().get<string>('provider', 'claude'));
       if (event.affectsConfiguration('contextBridge.mode')) chatView.selectMode(config().get<Mode>('mode', 'ask'));
+      if (event.affectsConfiguration('contextBridge.attachCurrentFile')) chatView.setCurrentFileEnabled(config().get<boolean>('attachCurrentFile', true));
       if (event.affectsConfiguration('contextBridge.claude.path') || event.affectsConfiguration('contextBridge.codex.path')) {
         void chatView.refreshStatus();
       }

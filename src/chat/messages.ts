@@ -1,4 +1,5 @@
 import type { AttachmentSummary } from '../context/attachmentStore.ts';
+import type { LineRange } from '../context/types.ts';
 import type { Mode, ModelCatalog, PermissionLevel, PermissionRequest, ProviderStatus } from '../providers/types.ts';
 
 // Messages between the chat webview (media/main.js) and the extension host.
@@ -19,6 +20,8 @@ export type WebviewMessage =
   | { type: 'openLink'; href: string }
   | { type: 'removeAttachment'; id: string }
   | { type: 'clearAttachments' }
+  // Turns the automatic current-file attachment off or back on for this chat.
+  | { type: 'setCurrentFile'; enabled: boolean }
   | { type: 'pickFiles' };
 
 export type HostMessage =
@@ -38,6 +41,9 @@ export type HostMessage =
       // Undefined while the check is running.
       status?: ProviderStatus;
       attachments: AttachmentSummary[];
+      // The file open in the editor (or its selection), attached automatically unless turned off.
+      // Undefined when there's none, or when that file is already attached by hand.
+      currentFile?: CurrentFileState;
     }
   | { type: 'cleared' }
   // Replays a saved conversation, e.g. when the view is shown again or a chat is opened from history.
@@ -58,3 +64,11 @@ export type TranscriptMessage =
   | { type: 'error'; message: string; at: number };
 
 export const OTHER_MODEL = '__other__';
+
+export interface CurrentFileState {
+  path: string;
+  // Non-empty selections, sent instead of the whole file.
+  selections: LineRange[];
+  enabled: boolean;
+  note?: string;
+}
