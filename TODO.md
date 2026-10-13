@@ -9,7 +9,7 @@ This is the handoff checklist for continuing development on another machine. Pro
 - [x] Document MVP goals and milestones.
 - [ ] Implement the extension. No application code, package manifest, build commands, or tests exist yet.
 
-**Next task:** Validate the provider integration and access boundaries in Phase 1 before building the full UI.
+**Next task:** Validate the provider integration and the ask-only boundary in Phase 1 before building the full UI.
 
 ## Continue on Another Machine
 
@@ -25,23 +25,23 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [ ] Install Git and the development tools needed for the next task. For extension implementation, choose and document supported Node.js, package-manager, and VS Code versions.
 - [ ] Install and authenticate the provider CLIs on the machine where they will run, using their supported account workflows.
 - [ ] Record the operating system and exact CLI versions used for feasibility checks.
-- [ ] Decide whether development uses VS Code locally, through Remote SSH, or in another remote environment. A headless machine can run prototype checks; editor UI validation needs a VS Code development host.
+- [x] Decide the development environment: local VS Code only (remote extension hosts are out of scope). A headless machine can still run prototype checks.
 - [ ] Once the scaffold exists, document dependency installation, build, test, and extension-debug commands in the README.
 
-“Continue on another machine” currently means continuing development from this Git repository. Production remote execution and remote provider hosting are not established product requirements.
+“Continue on another machine” means continuing development from this Git repository. Remote execution and remote provider hosting are out of scope.
 
-## Phase 1 — Provider Feasibility and Access Boundaries
+## Phase 1 — Provider Feasibility and Ask-Only Boundary
 
 - [ ] Check current official documentation for Claude Code and Codex programmatic interfaces, authentication, streaming, cancellation, and permission controls.
 - [ ] Create a small prototype for each provider that accepts a question and explicit context, then streams an answer.
 - [ ] Verify that existing-account authentication works for each integration; document prerequisites and any subscription limitations.
-- [ ] Identify implicit context sources: working-directory files, instruction files, prior sessions, configuration, external tools, and integrations.
-- [ ] Design a provider execution environment that prevents unrelated workspace reads, workspace writes, and model-requested command execution.
-- [ ] Verify the boundaries with an unattached file containing a unique marker, attempted file modifications, and attempted command execution. Inspect access/tool events where supported; refusal text alone is not proof.
-- [ ] Check how provider settings and enabled integrations affect those boundaries.
+- [ ] Identify the permission settings or sandbox modes that block file modifications and Git mutations while keeping read and search capabilities.
+- [ ] Verify the boundary with attempted file modifications and Git mutations. Inspect tool/access events where supported; refusal text alone is not proof.
+- [ ] Check how user-level provider settings and enabled integrations (for example MCP servers) could weaken the boundary.
+- [ ] Decide which provider to implement first.
 - [ ] Save findings, tested versions, reproduction commands, and unresolved limitations in `docs/provider-feasibility.md`.
 
-**Done when:** Both providers answer using supplied context, and there is evidence for the required access restrictions. If a requirement cannot be enforced, record the blocker and resolve the product or technical decision before claiming it is guaranteed.
+**Done when:** At least one provider answers using the attached context, with evidence that file modifications are blocked in Ask mode. Attached-context-only access is not required (attachments focus but do not isolate). If the ask-only boundary cannot be enforced for a provider, record the blocker and defer that provider.
 
 ## Phase 2 — Extension Scaffold
 
@@ -50,7 +50,7 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [ ] Define shared request, attachment, streaming-event, error, and cancellation interfaces.
 - [ ] Add a command to open ContextBridge and a minimal chat view.
 - [ ] Add a mock provider so editor workflows can be developed without a live account.
-- [ ] Define extension-host placement and provider executable discovery for the supported local/remote development setup.
+- [ ] Define provider executable discovery for local VS Code.
 
 **Done when:** A fresh checkout can install dependencies, build, and open ContextBridge in a VS Code Extension Development Host with a mock response.
 
@@ -64,33 +64,33 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [ ] Show context limits and require visible handling of omitted or truncated content.
 - [ ] Assemble a predictable request payload with clear source boundaries.
 
-**Done when:** The user can inspect exactly what will be sent, and the payload contains only the selected attachments plus clearly disclosed conversation context.
+**Done when:** The user can inspect exactly which attachments will be sent, and the payload presents them clearly as the focus of the question. The UI does not imply the provider is restricted to them.
 
 ## Phase 4 — Provider Chat
 
 - [ ] Implement the Claude Code adapter using the validated Phase 1 approach.
-- [ ] Implement the Codex adapter using the validated Phase 1 approach.
+- [ ] Implement the Codex adapter using the validated Phase 1 approach (may follow the first provider's release).
 - [ ] Add provider selection and prerequisite/authentication status.
 - [ ] Render streaming answers and support cancellation and process cleanup.
 - [ ] Handle missing executables, authentication failures, connection failures, and provider errors.
 - [ ] Define follow-up history and provider-switching behavior; keep reused context visible.
-- [ ] Apply the verified access restrictions to every request.
+- [ ] Apply the verified ask-only restrictions to every request.
 - [ ] Render provider output safely and keep credentials and attached source content out of routine logs.
 
-**Done when:** Both providers support the same file/selection question workflow, including cancellation and clear failures, while preserving the advertised Ask-mode boundaries.
+**Done when:** Supported providers handle the same file/selection question workflow, including cancellation and clear failures, without modifying workspace files.
 
 ## Phase 5 — Verify and Release
 
-- [ ] Add meaningful checks for attachment payload correctness, provider event handling, cancellation, and access restrictions.
+- [ ] Add meaningful checks for attachment payload correctness, provider event handling, cancellation, and the ask-only restriction.
 - [ ] Manually verify file attachment, selection attachment, preview, removal, streaming, and follow-up behavior in VS Code.
-- [ ] Repeat boundary checks with the actual extension and both providers.
+- [ ] Repeat ask-only boundary checks with the actual extension and each supported provider.
 - [ ] Verify setup from a fresh checkout on the second development machine; document any environment limitations.
-- [ ] Document installation, authentication, usage, supported environments, and exact access guarantees/limitations.
-- [ ] Package an installable VSIX and create a short demonstration.
-- [ ] Choose a publisher identity and release process before Marketplace publication.
-- [ ] Compare the workflow with existing alternatives and collect early-user feedback.
+- [ ] Document installation, reliance on the provider CLIs for authentication, usage, local-only support, and exact access behavior (ask-only enforced; attachments focus but do not isolate).
+- [ ] Package an installable VSIX for personal use.
+- [ ] Later: choose a publisher identity, create a short demonstration, and publish to the VS Code Marketplace.
+- [ ] Compare the workflow with the official provider extensions and collect early-user feedback.
 
-**Done when:** Another user can install the packaged extension and complete the main workflow using the documentation, with no unsupported security or authentication claims.
+**Done when:** The packaged extension can be installed and the main workflow completed using the documentation, with no unsupported security or authentication claims.
 
 ## Later Backlog
 
@@ -99,7 +99,7 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [ ] Persistent chat history and multi-root workspaces.
 - [ ] Symbols/references and additional provider adapters.
 
-Agent mode, automatic edits, and model-requested command execution are outside the initial scope.
+Agent mode and automatic edits are outside the initial scope.
 
 ## Handoff Routine
 
@@ -113,7 +113,7 @@ At the end of each development session:
 ### Latest Handoff
 
 - **Updated:** October 12, 2026.
-- **Implemented:** Project documentation only.
-- **Next action:** Phase 1 provider research and isolated request prototypes.
-- **Open decisions:** Provider transport, enforceable access boundaries, supported runtime versions, and local/remote extension-host placement.
+- **Implemented:** Project documentation only. Owner decisions recorded in `CLAUDE.md`; goals and this checklist updated to match.
+- **Next action:** Phase 1 provider research and ask-only request prototypes.
+- **Open decisions:** Provider transport, which provider goes first, permission settings that enforce ask-only, and supported runtime versions.
 - **Validation:** No implementation checks exist yet.
