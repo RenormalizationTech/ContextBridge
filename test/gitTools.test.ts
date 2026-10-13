@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { test } from 'node:test';
@@ -107,6 +107,7 @@ test('git MCP server answers status, diff, log and show without changing the rep
   }
   assert.equal(existsSync(join(repo, 'pwned.txt')), false);
   assert.equal(snapshot(repo), before, 'files and .git are byte-for-byte unchanged');
+  rmSync(repo, { recursive: true, force: true });
 });
 
 function snapshot(root: string): string {

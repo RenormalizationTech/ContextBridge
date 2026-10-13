@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -39,7 +39,8 @@ test('a chat saved mid-answer is closed when loaded, with pending approvals deni
 });
 
 test('history store saves, lists newest first, deletes, prunes, and rejects bad ids', async () => {
-  const store = new HistoryStore(join(mkdtempSync(join(tmpdir(), 'cb-history-')), 'chats'));
+  const root = mkdtempSync(join(tmpdir(), 'cb-history-'));
+  const store = new HistoryStore(join(root, 'chats'));
   assert.deepEqual(await store.list(), []);
   const chats = ['first', 'second', 'third'].map((question, index) => {
     const conversation = new Conversation({ providerId: 'codex' });
@@ -62,6 +63,7 @@ test('history store saves, lists newest first, deletes, prunes, and rejects bad 
   await assert.rejects(store.delete('../escape'), /Invalid chat id/);
   await store.clear();
   assert.deepEqual(await store.list(), []);
+  rmSync(root, { recursive: true, force: true });
 });
 
 test('a chat keeps its model and effort through save and load', () => {

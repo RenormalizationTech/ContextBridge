@@ -1,7 +1,7 @@
 // Runs the real provider adapters against fake `claude` / `codex` executables that speak the same
 // JSON streams, to check flags, the permission protocol, follow-ups, cancellation and errors offline.
 import assert from 'node:assert/strict';
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
@@ -13,7 +13,10 @@ const dir = mkdtempSync(join(tmpdir(), 'contextbridge-fake-'));
 const logFile = join(dir, 'log.jsonl');
 const savedEnv = { FAKE_MODE: process.env.FAKE_MODE, FAKE_LOG: process.env.FAKE_LOG };
 process.env.FAKE_LOG = logFile;
-after(() => Object.assign(process.env, savedEnv));
+after(() => {
+  Object.assign(process.env, savedEnv);
+  rmSync(dir, { recursive: true, force: true });
+});
 
 function writeFake(name: string, body: string): string {
   const path = join(dir, name);
