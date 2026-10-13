@@ -1,5 +1,5 @@
 import type { AttachmentSummary } from '../context/attachmentStore.ts';
-import type { Mode, PermissionRequest, ProviderStatus } from '../providers/types.ts';
+import type { Mode, PermissionLevel, PermissionRequest, ProviderStatus } from '../providers/types.ts';
 
 // Messages between the chat webview (media/main.js) and the extension host.
 export type WebviewMessage =
@@ -9,12 +9,14 @@ export type WebviewMessage =
   | { type: 'newChat' }
   | { type: 'selectProvider'; id: string }
   | { type: 'selectMode'; mode: Mode }
+  | { type: 'selectPermissionLevel'; level: PermissionLevel }
   | { type: 'showHistory' }
-  | { type: 'permissionResponse'; id: string; allow: boolean }
+  | { type: 'permissionResponse'; id: string; allow: boolean; always?: boolean }
   | { type: 'openAttachment'; id: string }
   | { type: 'openLink'; href: string }
   | { type: 'removeAttachment'; id: string }
-  | { type: 'clearAttachments' };
+  | { type: 'clearAttachments' }
+  | { type: 'pickFiles' };
 
 export type HostMessage =
   | {
@@ -22,6 +24,7 @@ export type HostMessage =
       providers: { id: string; label: string }[];
       providerId: string;
       mode: Mode;
+      permissionLevel: PermissionLevel;
       // Undefined while the check is running.
       status?: ProviderStatus;
       attachments: AttachmentSummary[];
@@ -36,7 +39,7 @@ export type TranscriptMessage =
   | { type: 'start'; question: string; attachments: string[]; provider: string; mode: Mode; at: number }
   | { type: 'notice'; text: string }
   | ({ type: 'permission'; id: string } & PermissionRequest)
-  | { type: 'permissionResolved'; id: string; allow: boolean }
+  | { type: 'permissionResolved'; id: string; allow: boolean; always?: boolean }
   | { type: 'text'; text: string }
   | { type: 'tool'; name: string; detail: string }
   | { type: 'done'; cancelled: boolean; at: number }

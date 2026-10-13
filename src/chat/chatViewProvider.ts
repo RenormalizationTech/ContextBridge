@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import type { AttachmentStore } from '../context/attachmentStore.ts';
 import { resolveAttachment } from '../context/collect.ts';
 import { applyLimits, buildPrompt } from '../context/payload.ts';
-import type { Mode, PermissionRequest, Provider, ProviderStatus } from '../providers/types.ts';
+import type { Mode, PermissionLevel, PermissionRequest, Provider, ProviderStatus } from '../providers/types.ts';
 import { Conversation, isTranscriptMessage } from './conversation.ts';
 import type { HistoryStore } from './historyStore.ts';
 import type { HostMessage, WebviewMessage } from './messages.ts';
@@ -15,7 +15,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private providerId: string;
   private mode: Mode;
   private nextPermissionId = 1;
-  private readonly permissions = new Map<string, (allow: boolean) => void>();
+  private readonly permissions = new Map<string, { resolve: (allow: boolean) => void; alwaysKey?: string }>();
+  // "Always allow" choices for the current chat only; never saved or written to settings.
+  private alwaysAllowed = new Set<string>();
   private readonly statuses = new Map<string, ProviderStatus>();
   private readonly extensionUri: vscode.Uri;
   private readonly providers: readonly Provider[];
@@ -24,6 +26,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private readonly onModeSelected: (mode: Mode) => void;
   private readonly history: HistoryStore;
   private readonly maxChats: () => number;
+  private readonly defaultPermissionLevel: () => PermissionLevel;
+  private readonly memento: vscode.Memento;
+  private permissionLevel: PermissionLevel;
   // The chat shown in the view. Its transcript outlives the webview, which VS Code discards
   // whenever the view is hidden (e.g. when switching to another side bar view).
   private conversation: Conversation;
@@ -38,6 +43,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     attachments: AttachmentStore;
     history: HistoryStore;
     maxChats: () => number;
+    defaultPermissionLevel: () => PermissionLevel;
+    // For "don't ask again" on the Bypass Approvals warning.
+    memento: vscode.Memento;
     onProviderSelected: (id: string) => void;
     onModeSelected: (mode: Mode) => void;
   }) {
@@ -48,6 +56,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.attachments = options.attachments;
     this.history = options.history;
     this.maxChats = options.maxChats;
+    this.defaultPermissionLevel = options.defaultPermissionLevel;
+    this.memento = options.memento;
+    this.permissionLevel = this.defaultPermissionLevel();
     this.onProviderSelected = options.onProviderSelected;
     this.onModeSelected = options.onModeSelected;
     this.conversation = new Conversation({ providerId: this.providerId });
@@ -76,10 +87,37 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.postState();
   }
 
+  // Per chat, like Copilot: changing it affects only the current chat (and is saved with it).
+  async selectPermissionLevel(level: PermissionLevel): Promise<void> {
+    if (level === this.permissionLevel || (level !== 'default' && level !== 'bypass')) return;
+    if (level === 'bypass' && !this.memento.get<boolean>('bypassWarningDismissed')) {
+      const choice = await vscode.window.showWarningMessage(
+        'Enable Bypass Approvals?',
+        {
+          modal: true,
+          detail: 'In Agent mode, every edit, command and tool call the provider asks about will be approved automatically for this chat, without asking you. Each one is still listed in the chat, and you can press Cancel at any time.',
+        },
+        'Enable',
+        "Enable and Don't Ask Again",
+      );
+      if (!choice) {
+        this.postState();
+        return;
+      }
+      if (choice !== 'Enable') await this.memento.update('bypassWarningDismissed', true);
+    }
+    this.permissionLevel = level;
+    this.conversation.permissionLevel = level;
+    this.postState();
+    this.scheduleSave();
+  }
+
   newChat(): void {
     this.pending?.abort();
     void this.saveNow();
     this.conversation = new Conversation({ providerId: this.providerId });
+    this.permissionLevel = this.defaultPermissionLevel();
+    this.alwaysAllowed = new Set();
     this.provider.resetConversation();
     this.post({ type: 'cleared' });
   }
@@ -142,6 +180,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       void this.refreshStatus();
     }
     this.conversation = new Conversation(stored);
+    this.permissionLevel = stored.permissionLevel ?? this.defaultPermissionLevel();
+    this.alwaysAllowed = new Set();
     this.provider.restoreConversation(stored.providerConversationId);
     this.post({ type: 'restore', messages: this.conversation.messages });
     this.reveal();
@@ -230,8 +270,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case 'selectMode':
         this.selectMode(message.mode);
         break;
+      case 'selectPermissionLevel':
+        void this.selectPermissionLevel(message.level);
+        break;
       case 'permissionResponse':
-        this.resolvePermission(message.id, message.allow);
+        this.resolvePermission(message.id, message.allow, message.always === true);
         break;
       case 'ask':
         void this.ask(message.question);
@@ -251,6 +294,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case 'clearAttachments':
         this.attachments.clear();
         break;
+      case 'pickFiles':
+        void vscode.commands.executeCommand('contextBridge.pickFiles');
+        break;
     }
   }
 
@@ -260,6 +306,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       providers: this.providers.map(({ id, label }) => ({ id, label })),
       providerId: this.providerId,
       mode: this.mode,
+      permissionLevel: this.permissionLevel,
       status: this.statuses.get(this.providerId),
       attachments: this.attachments.summaries(),
     });
@@ -267,21 +314,34 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   private requestPermission(request: PermissionRequest, signal: AbortSignal): Promise<boolean> {
     if (signal.aborted) return Promise.resolve(false);
+    const summary = `${request.tool}${request.detail ? ` ${request.detail}` : ''}`;
+    if (this.permissionLevel === 'bypass') {
+      this.post({ type: 'notice', text: `Approved automatically (Bypass Approvals): ${summary}` });
+      return Promise.resolve(true);
+    }
+    const alwaysKey = request.always ? `${this.providerId}:${request.always.key}` : undefined;
+    if (alwaysKey && this.alwaysAllowed.has(alwaysKey)) {
+      // Shown in the chat so auto-approved actions are never invisible.
+      this.post({ type: 'notice', text: `Allowed automatically (always allow): ${summary}` });
+      return Promise.resolve(true);
+    }
     const id = String(this.nextPermissionId++);
     return new Promise((resolve) => {
-      this.permissions.set(id, resolve);
+      this.permissions.set(id, { resolve, alwaysKey });
       signal.addEventListener('abort', () => this.resolvePermission(id, false), { once: true });
       this.post({ type: 'permission', id, ...request });
       this.reveal();
     });
   }
 
-  private resolvePermission(id: string, allow: boolean): void {
-    const resolve = this.permissions.get(id);
-    if (!resolve) return;
+  private resolvePermission(id: string, allow: boolean, always = false): void {
+    const pending = this.permissions.get(id);
+    if (!pending) return;
     this.permissions.delete(id);
-    this.post({ type: 'permissionResolved', id, allow });
-    resolve(allow);
+    const remember = allow && always && pending.alwaysKey !== undefined;
+    if (remember) this.alwaysAllowed.add(pending.alwaysKey!);
+    this.post({ type: 'permissionResolved', id, allow, always: remember || undefined });
+    pending.resolve(allow);
   }
 
   // Web links open in the browser; relative links open workspace files (optionally `#L12`).
@@ -385,12 +445,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     const nonce = Array.from({ length: 32 }, () => Math.floor(Math.random() * 36).toString(36)).join('');
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(distUri, 'webview.js'));
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'main.css'));
+    const katexStyleUri = webview.asWebviewUri(vscode.Uri.joinPath(distUri, 'katex', 'katex.min.css'));
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+  <!-- KaTeX positions subscripts and accents with inline style attributes, so style-src allows
+       'unsafe-inline'. Scripts stay nonce-only; answers can't add HTML (markdown-it html:false). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="${katexStyleUri}" rel="stylesheet">
   <link href="${styleUri}" rel="stylesheet">
   <title>ContextBridge</title>
 </head>
@@ -410,11 +474,18 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   </header>
   <div id="messages" aria-live="polite"></div>
   <form id="composer">
-    <div id="attachments"></div>
+    <div class="attachment-row">
+      <button type="button" id="add-files" class="icon-button" title="Add files or the current selection" aria-label="Add files">+</button>
+      <div id="attachments"></div>
+    </div>
     <div class="input-wrap">
       <textarea id="question" rows="3" placeholder="Ask about your code (Enter to send, Shift+Enter for a new line)"></textarea>
     </div>
     <div class="actions">
+      <select id="permissions" aria-label="Agent permissions" title="How Agent mode handles actions the provider asks about" hidden>
+        <option value="default">Default Permissions</option>
+        <option value="bypass">Bypass Approvals</option>
+      </select>
       <span class="spacer"></span>
       <button type="button" id="cancel" hidden>Cancel</button>
       <button type="submit" id="send">Ask</button>

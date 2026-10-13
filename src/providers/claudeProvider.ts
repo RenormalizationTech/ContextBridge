@@ -50,7 +50,7 @@ export class ClaudeProvider implements Provider {
     const tool = control.display_name && control.display_name !== control.tool_name
       ? `${control.display_name} (${control.tool_name})`
       : control.tool_name;
-    return request.requestPermission({ tool, detail, preview });
+    return request.requestPermission({ tool, detail, preview, always: alwaysScope(control.tool_name, detail) });
   }
 
   async ask(request: ProviderRequest, onEvent: (event: ProviderEvent) => void, signal: AbortSignal): Promise<void> {
@@ -152,4 +152,13 @@ function realCwd(cwd: string): string {
   } catch {
     return cwd;
   }
+}
+
+// What "Always allow" covers for a Claude Code tool: all edits, one exact command, or one tool.
+function alwaysScope(toolName: string, detail: string): { key: string; label: string } {
+  if (['Edit', 'MultiEdit', 'Write', 'NotebookEdit'].includes(toolName)) {
+    return { key: 'edits', label: 'Allow all file edits for the rest of this chat' };
+  }
+  if (toolName === 'Bash') return { key: `command:${detail}`, label: 'Allow this exact command for the rest of this chat' };
+  return { key: `tool:${toolName}`, label: `Allow ${toolName} for the rest of this chat` };
 }

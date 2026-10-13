@@ -1,3 +1,4 @@
+import type { PermissionLevel } from '../providers/types.ts';
 import type { TranscriptMessage } from './messages.ts';
 
 // A chat as saved to disk: the transcript plus the CLI conversation to resume.
@@ -8,6 +9,8 @@ export interface StoredConversation {
   providerId: string;
   // Claude session / Codex thread id, so follow-ups continue the same CLI conversation.
   providerConversationId?: string;
+  // Agent-mode permission level chosen for this chat.
+  permissionLevel?: PermissionLevel;
   createdAt: number;
   updatedAt: number;
   messages: TranscriptMessage[];
@@ -24,6 +27,7 @@ export class Conversation {
   readonly createdAt: number;
   providerId: string;
   providerConversationId?: string;
+  permissionLevel?: PermissionLevel;
   updatedAt: number;
   readonly messages: TranscriptMessage[];
 
@@ -34,6 +38,7 @@ export class Conversation {
       this.updatedAt = init.updatedAt;
       this.providerId = init.providerId;
       this.providerConversationId = init.providerConversationId;
+      this.permissionLevel = init.permissionLevel;
       this.messages = init.messages.map((message) => ({ ...message }));
       this.#closeInterruptedTurn();
     } else {
@@ -79,6 +84,7 @@ export class Conversation {
       title: this.title,
       providerId: this.providerId,
       providerConversationId: this.providerConversationId,
+      permissionLevel: this.permissionLevel,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       messages: this.messages,

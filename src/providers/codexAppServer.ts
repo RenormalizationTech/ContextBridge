@@ -84,7 +84,7 @@ export async function runAppServerTurn(
   // that arrive are declined. In Agent mode the user decides.
   async function answerServerRequest(id: number, method: string, params: any): Promise<void> {
     const decide = async (tool: string, detail: string, preview?: string) =>
-      request.mode === 'agent' && !signal.aborted && (await request.requestPermission({ tool, detail, preview }));
+      request.mode === 'agent' && !signal.aborted && (await request.requestPermission({ tool, detail, preview, always: alwaysScope(tool, detail) }));
     switch (method) {
       case 'item/commandExecution/requestApproval': {
         const allowed = await decide('Shell command', unwrapShell(params.command ?? ''), params.reason ?? undefined);
@@ -148,4 +148,11 @@ export async function runAppServerTurn(
   }
   await finished;
   return threadId;
+}
+
+// What "Always allow" covers: all file changes, or one exact command.
+function alwaysScope(tool: string, detail: string): { key: string; label: string } {
+  return tool === 'File change'
+    ? { key: 'edits', label: 'Allow all file changes for the rest of this chat' }
+    : { key: `command:${detail}`, label: 'Allow this exact command for the rest of this chat' };
 }

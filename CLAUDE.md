@@ -28,6 +28,7 @@ PROJECT_GOALS.md and TODO.md have been updated to match these. If they ever conf
    - Claude Code keeps its default tool set. Its permission prompts appear in the chat as Allow/Deny cards, and the user's Claude settings allow rules still apply.
    - Codex talks over `codex app-server` by default (setting `contextBridge.codex.transport`). Agent mode is a read-only sandbox with approval `on-request`, so edits and commands that need write access show Allow/Deny cards, like Claude Code (owner decision, October 13, 2026).
    - The `exec` fallback transport can't ask for approvals. In Agent mode it uses `workspace-write`, which covers the workspace plus Codex's default temp dirs.
+   - Agent mode has a per-chat permission level, like Copilot's picker: Default Permissions (approval cards) or Bypass Approvals (everything auto-approved and listed in the chat; a confirmation the first time). The level is saved with the chat, and new chats start from `contextBridge.agent.defaultPermissions`.
    - Ask mode's enforcement is unchanged. Switching modes keeps the conversation.
    - The chat lives in the secondary (right) side bar.
 

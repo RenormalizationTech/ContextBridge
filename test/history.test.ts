@@ -33,6 +33,9 @@ test('a chat saved mid-answer is closed when loaded, with pending approvals deni
   assert.equal(loaded.isAnswering, false);
   assert.deepEqual(loaded.messages.slice(-2).map((message) => message.type), ['permissionResolved', 'error']);
   assert.equal(saved.isAnswering, true, 'the original is not modified');
+
+  saved.permissionLevel = 'bypass';
+  assert.equal(new Conversation(saved.toJSON()).permissionLevel, 'bypass', 'the permission level is saved with the chat');
 });
 
 test('history store saves, lists newest first, deletes, prunes, and rejects bad ids', async () => {

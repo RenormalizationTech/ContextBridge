@@ -2,6 +2,10 @@
 // capabilities; Claude Code asks the user before edits and commands, Codex is sandboxed to the workspace.
 export type Mode = 'ask' | 'agent';
 
+// Agent mode only, like Copilot's permissions picker. Default: the user approves each action the
+// CLI asks about. Bypass: every approval is granted automatically (still shown in the chat).
+export type PermissionLevel = 'default' | 'bypass';
+
 // A tool call the provider wants the user to approve (Agent mode, Claude Code).
 export interface PermissionRequest {
   tool: string;
@@ -9,6 +13,9 @@ export interface PermissionRequest {
   detail: string;
   // Optional longer preview, e.g. the text an edit replaces and inserts.
   preview?: string;
+  // Identifies "the same kind of action" for an "Always allow" choice that lasts for the rest of the
+  // chat (e.g. all file edits, or one exact command), with a description of that scope.
+  always?: { key: string; label: string };
 }
 
 export interface ProviderRequest {

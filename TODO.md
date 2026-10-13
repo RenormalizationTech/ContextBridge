@@ -118,9 +118,25 @@ At the end of each development session:
   - After that, from owner requests:
     - The chat moved to the secondary (right) side bar (`viewsContainers.secondarySidebar`).
     - Optional Agent mode: an Ask/Agent dropdown backed by the `contextBridge.mode` setting, default `ask`. Claude Code gets full tools, with permission prompts shown as Allow/Deny cards in the chat. Codex gets the `workspace-write` sandbox. A warning banner shows in Agent mode, and switching modes keeps the conversation.
+- **Polish (October 13, branch `polish`; the owner confirmed each item in VS Code):**
+  - **+ button:** a picker of the active selection, open editors and workspace files (multi-select; skips `node_modules`, `.git`, build dirs).
+  - **Always allow:** approval cards gain a third button, scoped to the current chat (all edits / one exact command / one tool). It's never persisted, every auto-approval is shown, and it resets on New chat or when switching chats.
+  - **Syntax colors:** highlight.js 11.12 (common languages) in code blocks, with light and dark palettes keyed off VS Code's body theme class.
+  - **Checks:** 35 tests; stubbed host runs of the picker and of Always allow (edit scope auto-approves a later write, a plain Allow still asks again, New chat resets); jsdom check of cards, the + button and colored spans.
+- **Agent permission level (owner request, modeled on Copilot's picker):**
+  - A Default Permissions / Bypass Approvals dropdown below the input in Agent mode, per chat, saved with history, with the new-chat default from `contextBridge.agent.defaultPermissions`.
+  - Bypass auto-approves each request with a chat notice and shows a red banner. A confirmation appears the first time, with "Don't Ask Again" stored in globalState.
+  - Checks: stubbed host run with a fake claude (cancel/enable dialog, 0 cards and 4 notices under Bypass, New chat resets, don't-ask-again, History restores the level); jsdom picker visibility.
+- **Copy answer (owner request):** a copy icon in each answer's footer copies the raw Markdown. It's also on cancelled answers that have text and on chats restored from history; checked in jsdom.
+- **Math (owner request):**
+  - KaTeX 0.18.9 through `@vscode/markdown-it-katex`, with an npm override so the plugin uses 0.18.9: the fix for GHSA-238p-pmpm-9mq7, and over two weeks old.
+  - `\(…\)` / `\[…\]` are rewritten to dollar delimiters outside code. `trust` is off, so there are no links from TeX.
+  - Only the `.woff2` fonts ship, in `dist/katex/`, and the CSP adds `font-src` for the extension's own files.
+  - Checks: 37 tests; jsdom render of streamed math through `dist/webview.js`; all 20 referenced fonts present.
+  - Fix: subscripts, accents and `\phi` showed as gaps in VS Code, because the webview CSP blocked KaTeX's inline style attributes. `style-src` now allows `'unsafe-inline'`; scripts stay nonce-only. Reproduced and confirmed with headless-Chrome screenshots under the old and new CSP.
 - **Next action:** Use it day to day; verify a fresh checkout on the second machine. Later: Marketplace publisher and release.
 - **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex), a documented accepted risk. Agent mode is opt-in (CLAUDE.md decision 9).
-- **Open decisions:** syntax highlighting; Marketplace publisher identity; "always allow" option on approval cards; whether to keep one long-running Codex app-server per chat (faster follow-ups) instead of one per question.
+- **Open decisions:** Marketplace publisher identity; whether to keep one long-running Codex app-server per chat (faster follow-ups) instead of one per question.
 - **Validation:**
   - `npm run check` passes: typecheck, 27 tests and build. The tests include Agent mode: full tool set, approvals passed to the user and answered, Deny, cancelling during a pending approval, and Codex workspace-write on first questions and on resume.
   - Live, on throwaway repos:

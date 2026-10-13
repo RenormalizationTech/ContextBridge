@@ -16,6 +16,7 @@ import { renderMarkdown } from './markdown.ts';
   const historyButton = document.getElementById('history');
   const mode = document.getElementById('mode');
   const agentBanner = document.getElementById('agent-banner');
+  const permissions = document.getElementById('permissions');
   const permissionCards = new Map();
   // The answer in progress: { activity, body, progress, label, text, startedAt, timer }.
   let turn = null;
@@ -96,6 +97,41 @@ import { renderMarkdown } from './markdown.ts';
     });
   }
 
+  // Copies the answer's raw Markdown, like Copilot's copy action.
+  function copyAnswerButton(markdown) {
+    const button = element('button', 'copy-answer');
+    button.type = 'button';
+    button.title = 'Copy answer as Markdown';
+    button.setAttribute('aria-label', 'Copy answer as Markdown');
+    button.appendChild(copyIcon());
+    const label = element('span', 'copy-answer-label');
+    button.appendChild(label);
+    button.addEventListener('click', () => {
+      navigator.clipboard.writeText(markdown).then(() => {
+        label.textContent = 'Copied';
+        setTimeout(() => (label.textContent = ''), 1500);
+      });
+    });
+    return button;
+  }
+
+  function copyIcon() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('aria-hidden', 'true');
+    for (const [x, y] of [[5, 5], [2, 2]]) {
+      const rect = document.createElementNS(ns, 'rect');
+      for (const [name, value] of Object.entries({ x, y, width: 9, height: 9, rx: 1.5, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.3 })) {
+        rect.setAttribute(name, String(value));
+      }
+      svg.appendChild(rect);
+    }
+    return svg;
+  }
+
   // Replaces the progress line with how the answer ended.
   function finishTurn(outcome, errorMessage, at) {
     if (!turn) {
@@ -108,11 +144,12 @@ import { renderMarkdown } from './markdown.ts';
     else turn.body.remove();
     const seconds = elapsed(at);
     const footer = element('div', `turn-footer ${outcome}`);
-    footer.textContent = outcome === 'done'
+    footer.appendChild(element('span', undefined, outcome === 'done'
       ? `Done in ${seconds}s`
       : outcome === 'cancelled'
         ? `Cancelled after ${seconds}s`
-        : `Stopped after ${seconds}s`;
+        : `Stopped after ${seconds}s`));
+    if (turn.text) footer.appendChild(copyAnswerButton(turn.text));
     if (errorMessage) turn.progress.before(element('div', 'message error', errorMessage));
     turn.progress.replaceWith(footer);
     turn = null;
@@ -134,14 +171,19 @@ import { renderMarkdown } from './markdown.ts';
     provider.value = selectedId;
   }
 
-  function renderMode(value, providerId) {
+  function renderMode(value, providerId, level) {
     mode.value = value;
-    agentBanner.hidden = value !== 'agent';
-    agentBanner.textContent = providerId === 'claude'
-      ? 'Agent mode: Claude Code can edit files and run commands after you approve them in the chat.'
-      : providerId === 'codex'
-        ? 'Agent mode: Codex can edit files and run commands inside the workspace without asking.'
-        : 'Agent mode: the provider can edit files and run commands.';
+    const agent = value === 'agent';
+    const bypass = agent && level === 'bypass';
+    agentBanner.hidden = !agent;
+    agentBanner.classList.toggle('bypass', bypass);
+    permissions.hidden = !agent;
+    permissions.value = level;
+    permissions.classList.toggle('bypass', bypass);
+    const name = providerId === 'claude' ? 'Claude Code' : providerId === 'codex' ? 'Codex' : 'The provider';
+    agentBanner.textContent = bypass
+      ? `Bypass Approvals: ${name} edits files and runs commands without asking. Each action is listed in the chat.`
+      : `Agent mode: ${name} can edit files and run commands after you approve them in the chat.`;
     question.placeholder = value === 'agent'
       ? 'Ask or tell the agent what to do (Enter to send, Shift+Enter for a new line)'
       : 'Ask about your code (Enter to send, Shift+Enter for a new line)';
@@ -167,13 +209,21 @@ import { renderMarkdown } from './markdown.ts';
     }
     const actions = document.createElement('div');
     actions.className = 'actions';
-    for (const [label, allow] of [['Allow', true], ['Deny', false]]) {
+    const choices = [{ label: 'Allow', allow: true }];
+    if (message.always) choices.push({ label: 'Always allow', allow: true, always: true, title: message.always.label });
+    choices.push({ label: 'Deny', allow: false });
+    for (const choice of choices) {
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = label;
-      if (!allow) button.className = 'secondary';
-      button.addEventListener('click', () => vscode.postMessage({ type: 'permissionResponse', id: message.id, allow }));
+      button.textContent = choice.label;
+      if (choice.title) button.title = choice.title;
+      if (choice.label !== 'Allow') button.className = 'secondary';
+      button.addEventListener('click', () => vscode.postMessage({ type: 'permissionResponse', id: message.id, allow: choice.allow, always: choice.always }));
       actions.appendChild(button);
+    }
+    if (message.always) {
+      const scope = message.always.label.charAt(0).toLowerCase() + message.always.label.slice(1);
+      card.appendChild(element('div', 'permission-scope', `"Always allow" will ${scope}.`));
     }
     card.appendChild(actions);
     addActivity(card);
@@ -181,14 +231,14 @@ import { renderMarkdown } from './markdown.ts';
     setProgress('Waiting for your approval');
   }
 
-  function resolvePermissionCard(id, allow) {
+  function resolvePermissionCard(id, allow, always) {
     const card = permissionCards.get(id);
     if (!card) return;
     permissionCards.delete(id);
     card.classList.add('resolved');
     card.querySelector('.actions').replaceChildren(Object.assign(document.createElement('span'), {
       className: 'muted',
-      textContent: allow ? 'Allowed' : 'Denied',
+      textContent: always ? 'Always allowed for this chat' : allow ? 'Allowed' : 'Denied',
     }));
     setProgress('Thinking');
   }
@@ -203,7 +253,7 @@ import { renderMarkdown } from './markdown.ts';
     if (items.length === 0) {
       const empty = document.createElement('span');
       empty.className = 'muted';
-      empty.textContent = 'No attachments. Right-click a file or selection and choose "Add ... to ContextBridge".';
+      empty.textContent = 'Add files with +, or right-click a file or selection.';
       attachments.appendChild(empty);
       return;
     }
@@ -277,8 +327,10 @@ import { renderMarkdown } from './markdown.ts';
   });
   newChat.addEventListener('click', () => vscode.postMessage({ type: 'newChat' }));
   historyButton.addEventListener('click', () => vscode.postMessage({ type: 'showHistory' }));
+  document.getElementById('add-files').addEventListener('click', () => vscode.postMessage({ type: 'pickFiles' }));
   provider.addEventListener('change', () => vscode.postMessage({ type: 'selectProvider', id: provider.value }));
   mode.addEventListener('change', () => vscode.postMessage({ type: 'selectMode', mode: mode.value }));
+  permissions.addEventListener('change', () => vscode.postMessage({ type: 'selectPermissionLevel', level: permissions.value }));
 
   function clearConversation() {
     if (turn) clearInterval(turn.timer);
@@ -300,7 +352,7 @@ import { renderMarkdown } from './markdown.ts';
         break;
       case 'state':
         renderProviders(message.providers, message.providerId);
-        renderMode(message.mode, message.providerId);
+        renderMode(message.mode, message.providerId, message.permissionLevel);
         renderStatus(message.status);
         renderAttachments(message.attachments);
         break;
@@ -313,7 +365,7 @@ import { renderMarkdown } from './markdown.ts';
         addPermissionCard(message);
         break;
       case 'permissionResolved':
-        resolvePermissionCard(message.id, message.allow);
+        resolvePermissionCard(message.id, message.allow, message.always);
         break;
       case 'cleared':
         clearConversation();

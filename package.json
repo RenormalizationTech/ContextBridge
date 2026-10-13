@@ -72,6 +72,11 @@
         "command": "contextBridge.clearHistory",
         "title": "Clear Chat History",
         "category": "ContextBridge"
+      },
+      {
+        "command": "contextBridge.pickFiles",
+        "title": "Add Files to Context\u2026",
+        "category": "ContextBridge"
       }
     ],
     "menus": {
@@ -136,6 +141,23 @@
           "default": "ask",
           "description": "Whether the provider may change your files."
         },
+        "contextBridge.agent.defaultPermissions": {
+          "type": "string",
+          "enum": [
+            "default",
+            "bypass"
+          ],
+          "enumItemLabels": [
+            "Default Permissions",
+            "Bypass Approvals"
+          ],
+          "enumDescriptions": [
+            "Ask before each edit, command or tool call the provider requests.",
+            "Approve every request automatically. Each approval is still listed in the chat."
+          ],
+          "default": "default",
+          "description": "Agent-mode permission level for new chats. You can change it per chat from the picker below the question box."
+        },
         "contextBridge.claude.path": {
           "type": "string",
           "default": "",
@@ -181,9 +203,15 @@
     "@types/markdown-it": "~14.1.0",
     "@types/node": "^22.15.0",
     "@types/vscode": "~1.100.0",
+    "@vscode/markdown-it-katex": "~1.1.2",
     "@vscode/vsce": "~4.0.0",
     "esbuild": "~0.25.0",
+    "highlight.js": "~11.12.0",
+    "katex": "0.18.9",
     "markdown-it": "~14.3.2",
     "typescript": "~5.9.0"
+  },
+  "overrides": {
+    "katex": "$katex"
   }
 }

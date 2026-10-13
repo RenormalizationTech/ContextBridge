@@ -236,8 +236,8 @@ test('Claude adapter in Agent mode: full tool set and permission prompts answere
   assert.ok(!log[0].args.includes('--tools'), 'Agent mode keeps the default tool set');
   assert.equal(log[0].args[log[0].args.indexOf('--permission-prompt-tool') + 1], 'stdio');
   assert.deepEqual(asked, [
-    { tool: 'Edit', detail: 'a.py', preview: '- a\n+ b' },
-    { tool: 'mcp__srv__tool', detail: '', preview: '{\n  "q": "x"\n}' },
+    { tool: 'Edit', detail: 'a.py', preview: '- a\n+ b', always: { key: 'edits', label: 'Allow all file edits for the rest of this chat' } },
+    { tool: 'mcp__srv__tool', detail: '', preview: '{\n  "q": "x"\n}', always: { key: 'tool:mcp__srv__tool', label: 'Allow mcp__srv__tool for the rest of this chat' } },
   ]);
   assert.equal(log.find((entry) => entry.permission === 'p1').response.behavior, 'allow');
   assert.deepEqual(log.find((entry) => entry.permission === 'p2').response, { behavior: 'deny', message: 'The user denied this action.' });
@@ -306,7 +306,7 @@ test('Codex app-server in Agent mode: approvals go to the user', async () => {
       return true;
     },
   });
-  assert.deepEqual(asked, [{ tool: 'Shell command', detail: 'python3 fix.py', preview: 'needs write access' }]);
+  assert.deepEqual(asked, [{ tool: 'Shell command', detail: 'python3 fix.py', preview: 'needs write access', always: { key: 'command:python3 fix.py', label: 'Allow this exact command for the rest of this chat' } }]);
   assert.equal(events.filter((event) => event.type === 'text').map((event) => (event.type === 'text' ? event.text : '')).join(''), 'Streamed accept');
   const start = readLog().find((entry) => entry.method === 'thread/start');
   assert.deepEqual({ sandbox: start.params.sandbox, approvalPolicy: start.params.approvalPolicy }, { sandbox: 'read-only', approvalPolicy: 'on-request' });

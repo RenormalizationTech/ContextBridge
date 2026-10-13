@@ -29,12 +29,13 @@ If `code` isn't on your PATH, open the Extensions view in VS Code, choose **⋯ 
 1. Open the chat with **ContextBridge: Open**. It appears in the secondary (right) side bar, next to Copilot Chat if you use it. Use **View → Appearance → Secondary Side Bar** if it's hidden.
 2. Pick **Claude Code** or **Codex**, and **Ask** or **Agent**, from the dropdowns. The line underneath shows whether the CLI was found and is logged in.
 3. Attach context:
+   - **+ button:** click **+** next to the attachments to search open editors and workspace files (select several), or to add the current selection.
    - **Files:** right-click files in the Explorer (multi-select works) or an editor tab and choose **Add File to ContextBridge**.
    - **Selections:** right-click selected code and choose **Add Selection to ContextBridge**. With nothing selected, it attaches the whole file.
 4. Review the chips. Click one to open it (selections are highlighted), use **×** to remove one, or **Clear** to remove all.
 5. Ask your question (**Enter** sends, **Shift+Enter** adds a new line). Press **Cancel** to stop.
 
-Your questions appear in a shaded box, and answers carry the provider's name. While an answer is in progress, a light sweeps around the input box, and a spinner line at the end of the answer shows what the provider is doing and how long it's taken (for example `Read src/calc.py… 4s`). When the answer ends, the line becomes **Done in 14s**, **Cancelled after 5s**, or **Stopped** with the error. An answer keeps running if you switch to another view (Explorer, Copilot Chat, …) and is all there when you come back. Answers are rendered as Markdown, and code blocks have a **Copy** button. Follow-up questions continue the same conversation. **New chat**, or switching providers, starts a fresh one.
+Your questions appear in a shaded box, and answers carry the provider's name. While an answer is in progress, a light sweeps around the input box, and a spinner line at the end of the answer shows what the provider is doing and how long it's taken (for example `Read src/calc.py… 4s`). When the answer ends, the line becomes **Done in 14s**, **Cancelled after 5s**, or **Stopped** with the error. An answer keeps running if you switch to another view (Explorer, Copilot Chat, …) and is all there when you come back. Answers are rendered as Markdown. Code blocks are syntax-colored (light and dark palettes follow your theme) and have a **Copy** button. The copy icon at the end of an answer (next to **Done in …**) copies the whole answer as raw Markdown. Math is typeset with KaTeX: `$…$` or `\(…\)` inline, and `$$…$$`, `\[…\]` or a ```` ```math ```` block for display equations. Dollar amounts like "$5 and $10" stay as text, and TeX that can't be parsed is shown as a small inline error. Follow-up questions continue the same conversation. **New chat**, or switching providers, starts a fresh one.
 
 ### Chat history
 
@@ -62,6 +63,14 @@ Switch with the **Ask / Agent** dropdown, or the `contextBridge.mode` setting. S
 
 A banner shows while Agent mode is on. Cancelling while an approval card is waiting counts as **Deny**.
 
+**Permission level (Agent mode):** like Copilot's permissions picker, a dropdown below the question box sets how approvals work for the current chat:
+- **Default Permissions:** each edit, command or tool call the provider asks about pauses with an approval card.
+- **Bypass Approvals:** every request is approved automatically. Each one is still listed in the chat, and the banner turns red. Turning it on shows a confirmation, which you can dismiss for good with "Don't Ask Again". The CLIs' own deny rules (for example in your Claude settings) still apply.
+
+Each chat remembers its level, including when reopened from History. New chats start at `contextBridge.agent.defaultPermissions` (default: Default Permissions).
+
+Approval cards offer **Allow**, **Always allow** and **Deny**. **Always allow** lasts only for the current chat, and is never saved or written to your CLI settings. It covers all file edits when you use it on an edit, or that exact command when you use it on a shell command (for MCP and other tools, that tool). Each action it approves still shows a line in the chat. **New chat** or opening another chat resets it.
+
 **Codex connection:** ContextBridge talks to Codex through `codex app-server`, which streams answers and supports approval cards. The Codex CLI marks it experimental. If it misbehaves after a Codex update, set `contextBridge.codex.transport` to `exec` to use the older `codex exec --json` connection. With `exec`, answers arrive as whole messages, and Agent mode runs in the `workspace-write` sandbox without asking. That allows edits in the workspace and Codex's default temp directories (`/tmp`, `$TMPDIR`), but nowhere else.
 
 ## What Ask mode guarantees
@@ -84,6 +93,7 @@ Conversations are saved by each CLI like any other session (for example, they ap
 | --- | --- | --- |
 | `contextBridge.provider` | `claude` | `claude`, `codex`, or `mock` (canned answers, for development) |
 | `contextBridge.mode` | `ask` | `ask` or `agent` |
+| `contextBridge.agent.defaultPermissions` | `default` | Agent-mode level for new chats: `default` (Default Permissions) or `bypass` (Bypass Approvals) |
 | `contextBridge.history.maxChats` | `50` | Chats kept per workspace; `0` turns history off |
 | `contextBridge.claude.path` | empty | Path to `claude` if it isn't found automatically |
 | `contextBridge.codex.path` | empty | Path to `codex` if it isn't found automatically |

@@ -3,10 +3,11 @@ import { ChatViewProvider } from './chat/chatViewProvider.ts';
 import { HistoryStore } from './chat/historyStore.ts';
 import { AttachmentStore } from './context/attachmentStore.ts';
 import { collectFile, collectSelections, type CollectResult } from './context/collect.ts';
+import { pickFiles } from './context/picker.ts';
 import { ClaudeProvider } from './providers/claudeProvider.ts';
 import { CodexProvider, type CodexTransport } from './providers/codexProvider.ts';
 import { MockProvider } from './providers/mockProvider.ts';
-import type { Mode } from './providers/types.ts';
+import type { Mode, PermissionLevel } from './providers/types.ts';
 
 let activeChatView: ChatViewProvider | undefined;
 
@@ -29,6 +30,8 @@ export function activate(context: vscode.ExtensionContext): void {
     attachments,
     history: new HistoryStore(vscode.Uri.joinPath(storage, 'chats').fsPath),
     maxChats: () => config().get<number>('history.maxChats', 50),
+    defaultPermissionLevel: () => config().get<PermissionLevel>('agent.defaultPermissions', 'default'),
+    memento: context.globalState,
     onProviderSelected: (id) => void config().update('provider', id, vscode.ConfigurationTarget.Global),
     onModeSelected: (mode) => void config().update('mode', mode, vscode.ConfigurationTarget.Global),
   });
@@ -65,6 +68,14 @@ export function activate(context: vscode.ExtensionContext): void {
       addAll(await collectSelections(editor));
     }),
     vscode.commands.registerCommand('contextBridge.clearAttachments', () => attachments.clear()),
+    vscode.commands.registerCommand('contextBridge.pickFiles', async () => {
+      const picked = await pickFiles();
+      if (!picked) return;
+      const results = await Promise.all(picked.uris.map(collectFile));
+      const editor = vscode.window.activeTextEditor;
+      if (picked.selection && editor) results.push(...(await collectSelections(editor)));
+      addAll(results);
+    }),
     vscode.commands.registerCommand('contextBridge.newChat', () => chatView.newChat()),
     vscode.commands.registerCommand('contextBridge.showHistory', () => chatView.showHistory()),
     vscode.commands.registerCommand('contextBridge.clearHistory', () => chatView.clearHistory()),
