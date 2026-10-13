@@ -1,3 +1,4 @@
+import type { Mode } from '../providers/types.ts';
 import type { ResolvedAttachment } from './types.ts';
 
 export const MAX_ATTACHMENT_BYTES = 256 * 1024;
@@ -28,7 +29,7 @@ export function applyLimits(attachments: readonly ResolvedAttachment[]): Resolve
 
 // Attachments are the focus of the question, not a boundary: the provider may still read other files.
 // Same format as the validated Phase 1 prototypes (prototypes/common.mjs).
-export function buildPrompt(attachments: readonly ResolvedAttachment[], question: string): string {
+export function buildPrompt(attachments: readonly ResolvedAttachment[], question: string, mode: Mode = 'ask'): string {
   const sections = attachments.map((attachment) => {
     const range = attachment.range ? ` lines ${attachment.range.start}-${attachment.range.end}` : '';
     if (attachment.omitted !== undefined) {
@@ -40,9 +41,9 @@ export function buildPrompt(attachments: readonly ResolvedAttachment[], question
   if (attachments.some((attachment) => attachment.omitted !== undefined)) {
     preface.push('Content marked omitted was not included; read those files yourself if needed.');
   }
+  if (mode === 'ask') preface.push('This is Ask mode: answer and suggest changes, but do not modify files.');
   return [
     ...preface,
-    'This is Ask mode: answer and suggest changes, but do not modify files.',
     '',
     ...sections,
     '',

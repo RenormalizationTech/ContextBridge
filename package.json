@@ -2,9 +2,9 @@
   "name": "contextbridge",
   "displayName": "ContextBridge",
   "description": "Copilot-style Ask mode for Claude Code and Codex: attach files and selections, get answers, keep your code untouched.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "contextbridge-dev",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/RenormalizationTech/ContextBridge.git"
@@ -22,16 +22,16 @@
   "activationEvents": [],
   "contributes": {
     "viewsContainers": {
-      "activitybar": [
+      "secondarySidebar": [
         {
-          "id": "contextBridge",
+          "id": "contextBridgeChat",
           "title": "ContextBridge",
           "icon": "media/icon.svg"
         }
       ]
     },
     "views": {
-      "contextBridge": [
+      "contextBridgeChat": [
         {
           "type": "webview",
           "id": "contextBridge.chat",
@@ -61,6 +61,16 @@
       {
         "command": "contextBridge.newChat",
         "title": "New Chat",
+        "category": "ContextBridge"
+      },
+      {
+        "command": "contextBridge.showHistory",
+        "title": "Show Chat History",
+        "category": "ContextBridge"
+      },
+      {
+        "command": "contextBridge.clearHistory",
+        "title": "Clear Chat History",
         "category": "ContextBridge"
       }
     ],
@@ -113,6 +123,19 @@
           "default": "claude",
           "description": "Provider that answers questions."
         },
+        "contextBridge.mode": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "agent"
+          ],
+          "enumDescriptions": [
+            "Answers only. The provider cannot modify workspace files.",
+            "Full provider capabilities. Claude Code asks in the chat before edits and commands; Codex can edit files and run commands inside the workspace."
+          ],
+          "default": "ask",
+          "description": "Whether the provider may change your files."
+        },
         "contextBridge.claude.path": {
           "type": "string",
           "default": "",
@@ -122,6 +145,25 @@
           "type": "string",
           "default": "",
           "description": "Path to the codex executable. Leave empty to find it automatically."
+        },
+        "contextBridge.codex.transport": {
+          "type": "string",
+          "enum": [
+            "app-server",
+            "exec"
+          ],
+          "enumDescriptions": [
+            "codex app-server: streams answers as they're written; Agent mode asks for approval in the chat. Experimental in the Codex CLI.",
+            "codex exec --json: whole messages only; Agent mode runs in the workspace-write sandbox without asking."
+          ],
+          "default": "app-server",
+          "description": "How ContextBridge talks to Codex."
+        },
+        "contextBridge.history.maxChats": {
+          "type": "number",
+          "default": 50,
+          "minimum": 0,
+          "description": "How many chats to keep per workspace (oldest are deleted first). 0 turns chat history off."
         }
       }
     }
@@ -131,12 +173,15 @@
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
     "test": "node --test \"test/**/*.test.ts\"",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run typecheck && npm test && npm run build",
+    "test:boundary": "node scripts/boundary-check.ts",
+    "package": "npm run check && vsce package --no-dependencies --out dist/contextbridge-$npm_package_version.vsix"
   },
   "devDependencies": {
     "@types/markdown-it": "~14.1.0",
     "@types/node": "^22.15.0",
     "@types/vscode": "~1.100.0",
+    "@vscode/vsce": "~4.0.0",
     "esbuild": "~0.25.0",
     "markdown-it": "~14.3.2",
     "typescript": "~5.9.0"

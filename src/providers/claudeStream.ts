@@ -7,9 +7,34 @@ export const ASK_MODE_TOOLS = ['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch', 
 
 // Answers the CLI's permission prompts: read tools and all MCP tools are allowed (owner decision:
 // MCP side effects are an accepted, documented risk); anything else is denied.
-export function permissionFor(toolName: string): { behavior: 'allow' } | { behavior: 'deny'; message: string } {
+export function askModePermission(toolName: string): { behavior: 'allow' } | { behavior: 'deny'; message: string } {
   if (ASK_MODE_TOOLS.includes(toolName) || toolName.startsWith('mcp__')) return { behavior: 'allow' };
   return { behavior: 'deny', message: 'ContextBridge Ask mode does not allow this tool.' };
+}
+
+// What an Agent-mode approval card shows for a tool call.
+export function describeToolCall(toolName: string, input: Record<string, any>): { detail: string; preview?: string } {
+  const str = (value: unknown) => (typeof value === 'string' ? value : '');
+  switch (toolName) {
+    case 'Bash':
+      return { detail: str(input.command), preview: str(input.description) || undefined };
+    case 'Edit':
+      return { detail: str(input.file_path), preview: clip(`- ${str(input.old_string)}\n+ ${str(input.new_string)}`) };
+    case 'MultiEdit':
+      return { detail: str(input.file_path), preview: `${(input.edits ?? []).length} edits` };
+    case 'Write':
+      return { detail: str(input.file_path), preview: clip(str(input.content)) };
+    case 'NotebookEdit':
+      return { detail: str(input.notebook_path) };
+    default: {
+      const first = ['file_path', 'path', 'url', 'command', 'query', 'pattern'].map((key) => str(input[key])).find(Boolean);
+      return { detail: first ?? '', preview: first ? undefined : clip(JSON.stringify(input, null, 2)) };
+    }
+  }
+}
+
+function clip(text: string, limit = 1200): string {
+  return text.length > limit ? `${text.slice(0, limit)}\n… (${text.length - limit} more characters)` : text;
 }
 
 // Turns `claude -p --output-format stream-json --include-partial-messages` events into provider events.

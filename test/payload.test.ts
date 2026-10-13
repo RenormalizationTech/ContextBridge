@@ -23,6 +23,13 @@ test('states Ask mode and ends with the question', () => {
   assert.doesNotMatch(prompt, /<attachment/);
 });
 
+test('Agent mode leaves out the Ask-mode instruction', () => {
+  const prompt = buildPrompt([{ path: 'a.ts', text: 'x' }], 'Fix it', 'agent');
+  assert.doesNotMatch(prompt, /Ask mode/);
+  assert.match(prompt, /<attachment path="a\.ts">/);
+  assert.ok(prompt.endsWith('Question: Fix it'));
+});
+
 test('marks omitted attachments and tells the provider to read them itself', () => {
   const prompt = buildPrompt([{ path: 'big.json', omitted: 'too large to include' }], 'Summarize big.json');
   assert.match(prompt, /<attachment path="big\.json" omitted="too large to include" \/>/);

@@ -7,7 +7,9 @@ import type { ProviderEvent } from '../src/providers/types.ts';
 const request = {
   prompt: buildPrompt([{ path: 'a.ts', text: 'x' }], 'Explain a.ts'),
   cwd: '/workspace',
-};
+  mode: 'ask',
+  requestPermission: async () => false,
+} as const;
 
 test('streams text and ends with a single done event', async () => {
   const events: ProviderEvent[] = [];

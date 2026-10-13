@@ -33,7 +33,11 @@ export class MockProvider implements Provider {
 
   resetConversation(): void {}
 
+  readonly conversationId = undefined;
+
+  restoreConversation(): void {}
+
   async checkStatus(): Promise<ProviderStatus> {
-    return { ok: true, detail: 'Canned answers for development' };
+    return { ok: true, installed: true, detail: 'Canned answers for development' };
   }
 }

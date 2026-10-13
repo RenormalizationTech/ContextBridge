@@ -34,6 +34,53 @@ select {
   font-size: 0.9em;
 }
 
+#agent-banner {
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-left: 3px solid var(--vscode-editorWarning-foreground);
+  font-size: 0.9em;
+  background: var(--vscode-inputValidation-warningBackground, transparent);
+}
+
+#mode {
+  flex: 0 0 auto;
+}
+
+.permission {
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid var(--vscode-editorWarning-foreground);
+  border-radius: 4px;
+}
+
+.permission.resolved {
+  border-color: var(--vscode-panel-border);
+  opacity: 0.8;
+}
+
+.permission-title {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.permission-detail {
+  display: block;
+  margin-bottom: 6px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: var(--vscode-editor-font-family);
+}
+
+.permission pre {
+  max-height: 200px;
+  margin: 0 0 6px;
+  padding: 6px;
+  overflow: auto;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.9em;
+  background: var(--vscode-textCodeBlock-background);
+}
+
 #status.error {
   color: var(--vscode-errorForeground);
 }
@@ -61,17 +108,111 @@ select {
   line-height: 1.45;
 }
 
-.message.user {
-  padding: 6px 8px;
-  border-radius: 4px;
-  background: var(--vscode-input-background);
-}
-
-.message.status,
 .muted {
-  font-size: 0.95em;
   color: var(--vscode-descriptionForeground);
   font-style: italic;
+  font-size: 0.95em;
+}
+
+/* Conversation turns */
+.turn {
+  margin-bottom: 16px;
+}
+
+.turn-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+}
+
+.turn-badge {
+  padding: 0 5px;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--vscode-editorWarning-foreground);
+  border: 1px solid var(--vscode-editorWarning-foreground);
+}
+
+.turn-body {
+  line-height: 1.45;
+  word-wrap: break-word;
+}
+
+/* A gray fill derived from the theme's text color, so it stands out in light and dark themes. */
+.turn.user .turn-body {
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  background: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vscode-foreground) 14%, transparent);
+}
+
+.turn.assistant {
+  padding-left: 10px;
+  border-left: 2px solid var(--vscode-textLink-foreground);
+}
+
+.turn.assistant .turn-header {
+  color: var(--vscode-textLink-foreground);
+}
+
+.turn-activity:not(:empty) {
+  margin-bottom: 6px;
+}
+
+.activity-line {
+  font-size: 0.9em;
+  color: var(--vscode-descriptionForeground);
+  font-family: var(--vscode-editor-font-family);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress,
+.turn-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.9em;
+  color: var(--vscode-descriptionForeground);
+}
+
+.turn-footer.cancelled,
+.turn-footer.error {
+  color: var(--vscode-editorWarning-foreground);
+}
+
+.spinner {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border: 2px solid var(--vscode-descriptionForeground);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-top-color: var(--vscode-descriptionForeground);
+    opacity: 0.6;
+  }
 }
 
 .message.error {
@@ -136,18 +277,62 @@ button.link {
   color: var(--vscode-textLink-foreground);
 }
 
+/* The input box. While an answer is in progress, a light sweeps around its border. */
+.input-wrap {
+  padding: 1px;
+  border-radius: 4px;
+  background: var(--vscode-input-border, var(--vscode-panel-border));
+}
+
+.input-wrap:focus-within {
+  background: var(--vscode-focusBorder);
+}
+
+@property --cb-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+#composer.busy .input-wrap {
+  padding: 2px;
+  background: conic-gradient(
+    from var(--cb-angle),
+    transparent 0deg,
+    var(--vscode-focusBorder) 70deg,
+    var(--vscode-textLink-foreground) 140deg,
+    transparent 210deg,
+    transparent 360deg
+  );
+  animation: cb-sweep 2.4s linear infinite;
+}
+
+@keyframes cb-sweep {
+  to {
+    --cb-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #composer.busy .input-wrap {
+    animation: none;
+    background: var(--vscode-focusBorder);
+  }
+}
+
 textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   resize: vertical;
   font-family: inherit;
   font-size: inherit;
   color: var(--vscode-input-foreground);
   background: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border, transparent);
-  padding: 4px;
-}
-
-textarea:focus {
-  outline: 1px solid var(--vscode-focusBorder);
+  border: none;
+  border-radius: 3px;
+  padding: 6px;
+  outline: none;
 }
 
 .actions {

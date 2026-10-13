@@ -1,10 +1,14 @@
 import * as vscode from 'vscode';
 import { ChatViewProvider } from './chat/chatViewProvider.ts';
+import { HistoryStore } from './chat/historyStore.ts';
 import { AttachmentStore } from './context/attachmentStore.ts';
 import { collectFile, collectSelections, type CollectResult } from './context/collect.ts';
 import { ClaudeProvider } from './providers/claudeProvider.ts';
-import { CodexProvider } from './providers/codexProvider.ts';
+import { CodexProvider, type CodexTransport } from './providers/codexProvider.ts';
 import { MockProvider } from './providers/mockProvider.ts';
+import type { Mode } from './providers/types.ts';
+
+let activeChatView: ChatViewProvider | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
   const attachments = new AttachmentStore();
@@ -12,16 +16,23 @@ export function activate(context: vscode.ExtensionContext): void {
   const pathSetting = (key: string) => config().get<string>(key)?.trim() || undefined;
   const providers = [
     new ClaudeProvider(() => pathSetting('claude.path')),
-    new CodexProvider(() => pathSetting('codex.path')),
+    new CodexProvider(() => pathSetting('codex.path'), () => config().get<CodexTransport>('codex.transport', 'app-server')),
     new MockProvider(),
   ];
-  const chatView = new ChatViewProvider(
-    context.extensionUri,
+  // Per-workspace storage, like VS Code's own chat history.
+  const storage = context.storageUri ?? context.globalStorageUri;
+  const chatView = new ChatViewProvider({
+    extensionUri: context.extensionUri,
     providers,
-    config().get<string>('provider', 'claude'),
+    providerId: config().get<string>('provider', 'claude'),
+    mode: config().get<Mode>('mode', 'ask'),
     attachments,
-    (id) => void config().update('provider', id, vscode.ConfigurationTarget.Global),
-  );
+    history: new HistoryStore(vscode.Uri.joinPath(storage, 'chats').fsPath),
+    maxChats: () => config().get<number>('history.maxChats', 50),
+    onProviderSelected: (id) => void config().update('provider', id, vscode.ConfigurationTarget.Global),
+    onModeSelected: (mode) => void config().update('mode', mode, vscode.ConfigurationTarget.Global),
+  });
+  activeChatView = chatView;
 
   const addAll = (results: CollectResult[]) => {
     for (const result of results) {
@@ -55,8 +66,11 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand('contextBridge.clearAttachments', () => attachments.clear()),
     vscode.commands.registerCommand('contextBridge.newChat', () => chatView.newChat()),
+    vscode.commands.registerCommand('contextBridge.showHistory', () => chatView.showHistory()),
+    vscode.commands.registerCommand('contextBridge.clearHistory', () => chatView.clearHistory()),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration('contextBridge.provider')) chatView.selectProvider(config().get<string>('provider', 'claude'));
+      if (event.affectsConfiguration('contextBridge.mode')) chatView.selectMode(config().get<Mode>('mode', 'ask'));
       if (event.affectsConfiguration('contextBridge.claude.path') || event.affectsConfiguration('contextBridge.codex.path')) {
         void chatView.refreshStatus();
       }
@@ -64,4 +78,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 }
 
-export function deactivate(): void {}
+// VS Code waits for this promise, so the current chat is saved on shutdown.
+export function deactivate(): Promise<void> | undefined {
+  return activeChatView?.dispose();
+}

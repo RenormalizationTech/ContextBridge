@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ClaudeProvider } from '../src/providers/claudeProvider.ts';
-import { ClaudeStreamParser, permissionFor } from '../src/providers/claudeStream.ts';
+import { askModePermission, ClaudeStreamParser, describeToolCall } from '../src/providers/claudeStream.ts';
 import { CodexProvider } from '../src/providers/codexProvider.ts';
-import { CodexStreamParser } from '../src/providers/codexStream.ts';
+import { CodexStreamParser, unwrapShell } from '../src/providers/codexStream.ts';
 import type { ProviderEvent } from '../src/providers/types.ts';
 
 const delta = (text: string, parent?: string) => ({
@@ -12,12 +12,22 @@ const delta = (text: string, parent?: string) => ({
   event: { type: 'content_block_delta', delta: { type: 'text_delta', text } },
 });
 
-test('permissionFor allows read tools and MCP tools, denies everything else', () => {
-  assert.equal(permissionFor('Read').behavior, 'allow');
-  assert.equal(permissionFor('mcp__local-searxng__search_web').behavior, 'allow');
+test('askModePermission allows read tools and MCP tools, denies everything else', () => {
+  assert.equal(askModePermission('Read').behavior, 'allow');
+  assert.equal(askModePermission('mcp__local-searxng__search_web').behavior, 'allow');
   for (const tool of ['Edit', 'Write', 'Bash', 'NotebookEdit', 'EnterWorktree', 'CronCreate']) {
-    assert.equal(permissionFor(tool).behavior, 'deny', tool);
+    assert.equal(askModePermission(tool).behavior, 'deny', tool);
   }
+});
+
+test('describeToolCall summarizes commands and edits for approval cards', () => {
+  assert.deepEqual(describeToolCall('Bash', { command: 'npm test', description: 'Run tests' }), { detail: 'npm test', preview: 'Run tests' });
+  assert.deepEqual(describeToolCall('Edit', { file_path: '/w/a.py', old_string: 'x = 1', new_string: 'x = 2' }), {
+    detail: '/w/a.py',
+    preview: '- x = 1\n+ x = 2',
+  });
+  assert.match(describeToolCall('Write', { file_path: 'b.py', content: 'y'.repeat(2000) }).preview ?? '', /more characters/);
+  assert.equal(describeToolCall('mcp__srv__tool', { q: 'x' }).preview, '{\n  "q": "x"\n}');
 });
 
 test('Claude parser streams main-conversation text, separates messages, and records the session', () => {
@@ -70,15 +80,19 @@ test('Codex parser maps commands, MCP calls, messages, and failures', () => {
     { type: 'done', cancelled: false },
   ]);
   assert.equal(parser.threadId, 't1');
+  assert.equal(unwrapShell(`/bin/zsh -lc "python3 -c \\"print('hi')\\""`), `python3 -c "print('hi')"`);
+  assert.equal(unwrapShell("/bin/zsh -lc 'cat a.py'"), 'cat a.py');
   assert.deepEqual(new CodexStreamParser().handle({ type: 'turn.failed', error: { message: 'boom' } }), [{ type: 'error', message: 'boom' }]);
 });
 
 test('providers report a missing CLI from a bad configured path', async () => {
   for (const provider of [new ClaudeProvider(() => '/nonexistent/claude'), new CodexProvider(() => '/nonexistent/codex')]) {
     const events: ProviderEvent[] = [];
-    await provider.ask({ prompt: 'hi', cwd: '/tmp' }, (event) => events.push(event), new AbortController().signal);
+    await provider.ask({ prompt: 'hi', cwd: '/tmp', mode: 'ask', requestPermission: async () => false }, (event) => events.push(event), new AbortController().signal);
     assert.equal(events.length, 1);
     assert.match(events[0].type === 'error' ? events[0].message : '', /CLI not found/);
-    assert.equal((await provider.checkStatus()).ok, false);
+    const status = await provider.checkStatus();
+    assert.equal(status.ok, false);
+    assert.equal(status.installed, false);
   }
 });

@@ -90,7 +90,7 @@ Use structured provider interfaces where available rather than scraping terminal
 
 After the MVP, consider open-tab attachments, Git diffs, diagnostics, symbols, context-size estimates, saved context sets, persistent chat history, multi-root workspaces, and additional providers.
 
-Agent mode, automatic edits, a new coding-agent runtime, and a custom billing/authentication platform are outside the initial scope. Any later action-capable mode would require an explicit product decision and separate permission design.
+A new coding-agent runtime and a custom billing/authentication platform are outside the scope. An optional Agent mode was added after the MVP by owner decision (October 12, 2026). It restores each CLI's own capabilities, with Claude Code approvals shown in the chat and Codex limited to its workspace-write sandbox. Ask mode remains the default and keeps its enforced boundary.
 
 ## Open Questions
 

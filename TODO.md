@@ -9,7 +9,7 @@ This is the handoff checklist for continuing development on another machine. Pro
 - [x] Document MVP goals and milestones.
 - [ ] Implement the extension. The Phase 2 scaffold exists (mock provider only).
 
-**Next task:** Phase 5 (verify and release).
+**Next task:** Day-to-day use of 0.1.0; verify setup on the second machine. Later: Marketplace publication.
 
 ## Continue on Another Machine
 
@@ -81,12 +81,12 @@ For an existing checkout, inspect `git status` and save any local work before up
 
 ## Phase 5 — Verify and Release
 
-- [ ] Add meaningful checks for attachment payload correctness, provider event handling, cancellation, and the ask-only restriction.
-- [ ] Manually verify file attachment, selection attachment, preview, removal, streaming, and follow-up behavior in VS Code.
-- [ ] Repeat ask-only boundary checks with the actual extension and each supported provider.
+- [x] Add meaningful checks for attachment payload correctness, provider event handling, cancellation, and the ask-only restriction. (Unit tests, fake-CLI adapter tests in `test/fakeCli.test.ts`, and the live `npm run test:boundary`.)
+- [x] Manually verify file attachment, selection attachment, preview, removal, streaming, and follow-up behavior in VS Code. (Owner F5 checks after Phases 3 and 4 and Markdown.)
+- [x] Repeat ask-only boundary checks with the actual extension and each supported provider. (`npm run test:boundary` drives the shipped adapters against the real CLIs.)
 - [ ] Verify setup from a fresh checkout on the second development machine; document any environment limitations.
-- [ ] Document installation, reliance on the provider CLIs for authentication, usage, local-only support, and exact access behavior (ask-only enforced; attachments focus but do not isolate).
-- [ ] Package an installable VSIX for personal use.
+- [x] Document installation, reliance on the provider CLIs for authentication, usage, local-only support, and exact access behavior (ask-only enforced; attachments focus but do not isolate).
+- [x] Package an installable VSIX for personal use (`npm run package` → `dist/contextbridge-0.1.0.vsix`).
 - [ ] Later: choose a publisher identity, create a short demonstration, and publish to the VS Code Marketplace.
 - [ ] Compare the workflow with the official provider extensions and collect early-user feedback.
 
@@ -99,7 +99,7 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [ ] Persistent chat history and multi-root workspaces.
 - [ ] Symbols/references and additional provider adapters.
 
-Agent mode and automatic edits are outside the initial scope.
+Agent mode was added after the MVP as an optional mode (see CLAUDE.md decision 9); Ask stays the default.
 
 ## Handoff Routine
 
@@ -112,19 +112,36 @@ At the end of each development session:
 
 ### Latest Handoff
 
-- **Updated:** October 12, 2026 (branch `markdown`). Markdown rendering added after Phase 4.
-- **Implemented:** Phase 4 provider chat.
-  - Claude Code adapter: stream-json in/out, read-only `--tools`, permission prompts answered over stdio (allows read tools and all `mcp__*` tools), `--resume` follow-ups.
-  - Codex adapter: `exec --json` with `sandbox_mode="read-only"`, `exec resume` follow-ups.
-  - CLI discovery (setting, then login-shell PATH, then common install dirs), with the login-shell PATH passed to the child processes.
-  - Status line (installed / logged in), provider dropdown, New chat, tool activity lines, the attachments sent shown under each question, cancellation, and errors for a missing CLI, logged-out state and early exit.
-- **Next action:** Phase 5 (verify and release).
-- **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex); their side effects are a documented, accepted risk. Follow-ups resume the CLI session and re-send current attachments; switching providers starts a new chat.
-- **Open decisions:** Codex `app-server` for token streaming; syntax highlighting in code blocks (not done).
-- **Validation:** `npm run check` passes (typecheck, 15 unit tests, build). Live runs on the Git fixture:
-  - Claude: answer from attachments, follow-up remembered context, MCP search allowed, edit/new file/commit blocked, cancel left no process.
-  - Codex: answer, resumed session blocked edit/new file/commit.
-  - In both cases git status and file hashes were unchanged.
-  - Built extension with stubbed `vscode`: status, real Claude answer about an attached file, provider switch.
-  - The owner confirmed it works in the Extension Development Host (F5).
-- **Markdown:** answers are rendered with markdown-it 14.3.2 (`html: false`, linkify), re-rendered at most once per frame while streaming. Code blocks get a Copy button. Links open via the host (http(s) in the browser, relative paths as workspace files). `npm run check` passes (18 unit tests, including HTML and `javascript:`-link escaping). The owner confirmed it in the Extension Development Host (F5).
+- **Updated:** October 12, 2026 (branch `release-prep`).
+- **Implemented:**
+  - Phase 5 release prep: version 0.1.0 (Apache-2.0), `npm run package` (vsce 4.0.0), user README, fake-CLI adapter tests, and `npm run test:boundary`. The owner installed the VSIX and confirmed it works.
+  - After that, from owner requests:
+    - The chat moved to the secondary (right) side bar (`viewsContainers.secondarySidebar`).
+    - Optional Agent mode: an Ask/Agent dropdown backed by the `contextBridge.mode` setting, default `ask`. Claude Code gets full tools, with permission prompts shown as Allow/Deny cards in the chat. Codex gets the `workspace-write` sandbox. A warning banner shows in Agent mode, and switching modes keeps the conversation.
+- **Next action:** Use it day to day; verify a fresh checkout on the second machine. Later: Marketplace publisher and release.
+- **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex), a documented accepted risk. Agent mode is opt-in (CLAUDE.md decision 9).
+- **Open decisions:** syntax highlighting; Marketplace publisher identity; "always allow" option on approval cards; whether to keep one long-running Codex app-server per chat (faster follow-ups) instead of one per question.
+- **Validation:**
+  - `npm run check` passes: typecheck, 27 tests and build. The tests include Agent mode: full tool set, approvals passed to the user and answered, Deny, cancelling during a pending approval, and Codex workspace-write on first questions and on resume.
+  - Live, on throwaway repos:
+    - Claude Agent mode: an Edit request reached the approval callback. When denied the file was unchanged; when allowed it was edited.
+    - Codex Agent mode: edited the workspace file, but writing to `~/` was blocked. Writing to the system temp dir is allowed by Codex's workspace-write default.
+  - `npm run test:boundary` (Ask mode) passed for both providers earlier in this session.
+  - Chat readability (owner request): labeled turns (**You** / provider name, plus an Agent badge), tool activity and approval cards grouped in the answer, and a live progress line (Thinking / current tool / Waiting for your approval / Writing, with elapsed seconds) that becomes Done / Cancelled / Stopped. Checked by replaying a conversation into the built `dist/webview.js` in jsdom.
+  - Second round of owner requests:
+    - No YOU header; questions sit in a shaded box.
+    - An animated border sweeps around the input box while busy, and holds still with reduced motion.
+    - Chats survive hiding the view: a host-side transcript is replayed into the webview, and a running answer is no longer cancelled when the view is hidden.
+    - Chat history: one JSON file per chat in per-workspace extension storage. It keeps the newest `history.maxChats` (default 50; 0 turns it off). A History quick pick reopens or deletes chats, there's a Clear Chat History command, and follow-ups resume the stored CLI conversation id.
+    - A missing Claude session gives a clear message, and the next question starts fresh.
+  - Checks for this round:
+    - 30 tests pass, including the conversation model and the history store.
+    - jsdom replay of `dist/webview.js` covered restore, the busy class and the History button.
+    - Stubbed-`vscode` host run covered hiding the view mid-answer, completing in the background and restoring, history save/list/reopen/delete, and `maxChats` 0.
+    - A live missing-session check on Claude passed.
+  - Provider check on first open (owner request): if the saved provider's CLI isn't installed, it switches once per session to an installed one (never Mock, never mid-chat) and says so. A logged-out but installed CLI is left selected. Simulated runs: only Codex → switched; neither → stayed; question already sent → stayed.
+  - Codex over `codex app-server` (owner request; `contextBridge.codex.transport`, default `app-server`, fallback `exec`):
+    - Streams answers.
+    - Agent mode is now read-only + approval `on-request`, with Allow/Deny cards (owner decision).
+    - Checks: fake app-server tests (settings, streaming, resume, approvals, interrupt); live boundary (Ask) passed in new and resumed conversations; live Agent deny/allow/follow-up; live cancel with no leftover processes.
+  - The owner installed the VSIX and confirmed these changes (the right side bar, Agent mode, chat layout, history, provider check, Codex streaming) in VS Code.

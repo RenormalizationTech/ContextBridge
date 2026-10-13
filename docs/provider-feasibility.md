@@ -86,6 +86,16 @@ The prompt goes in on stdin (`-`). `--ephemeral` avoids saving session files.
 - No token streaming in `exec --json`. The UI would show progress (commands, tool calls) and then whole messages.
 - Shell sandbox side effects: some tools print warnings because temp-file creation is denied (for example the `xcrun` cache). Harmless for reading.
 
+## Codex app-server (October 13, 2026)
+
+ContextBridge now talks to Codex over `codex app-server --stdio` (JSON-RPC, one server per question) by default. `exec --json` remains available as `contextBridge.codex.transport: "exec"`.
+
+- **Streaming:** text arrives as `item/agentMessage/delta` (52 deltas for a short answer in the first probe).
+- **Ask mode:** `thread/start` / `thread/resume` with `sandbox: "read-only"` and `approvalPolicy: "never"`. `npm run test:boundary -- codex` passed in new and resumed conversations: Codex ran `git checkout -b attack && git commit` twice, and the repo, `.git` included, was unchanged.
+- **Agent mode:** `sandbox: "read-only"`, `approvalPolicy: "on-request"`. Write attempts arrive as `item/commandExecution/requestApproval` (or `item/fileChange/requestApproval`) and become Allow/Deny cards. Live: declined left the file unchanged, accepted edited it, and a follow-up resumed the thread with context.
+- **Cancel:** `turn/interrupt`, then the server is stopped. No `app-server --stdio` or MCP (`node_repl`) processes were left behind.
+- The `codex app-server --listen unix:// --managed-daemon` process seen on the test machine is Codex's own shared daemon, already running before any app-server work. It isn't started or stopped by ContextBridge.
+
 ## Not Yet Checked
 
 - Whether grandchild processes (MCP servers) outlive a cancelled Codex run. Only the direct child was checked.
@@ -99,3 +109,5 @@ The prompt goes in on stdin (`-`). `--ephemeral` avoids saving session files.
 node prototypes/claude-ask.mjs --cwd <dir> --attach src/calc.py --attach src/helper.py:2-3 -- "Why does mean() crash on empty input?"
 node prototypes/codex-ask.mjs  --cwd <dir> --attach src/calc.py --attach src/helper.py:2-3 -- "Why does mean() crash on empty input?"
 ```
+
+To repeat the boundary check with the shipped adapters (Phase 5), run `npm run test:boundary` (optionally `-- claude` or `-- codex`). It asks each provider, in a throwaway Git repo, to edit, create and delete files, create a branch and commit, once in a new conversation and once in a resumed one. It fails unless the repo, `.git` included, is byte-for-byte unchanged. Last run (October 12, 2026): passed for both providers in both conversations.

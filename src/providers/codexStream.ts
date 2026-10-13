@@ -52,7 +52,8 @@ export class CodexStreamParser {
 }
 
 // `/bin/zsh -lc "cat a.py"` -> `cat a.py`
-function unwrapShell(command: string): string {
+export function unwrapShell(command: string): string {
   const match = command.match(/^\S+ -l?c (["'])([\s\S]*)\1$/);
-  return match ? match[2] : command;
+  if (!match) return command;
+  return match[1] === '"' ? match[2].replace(/\\(["\\$`])/g, '$1') : match[2];
 }
