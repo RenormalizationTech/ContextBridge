@@ -98,6 +98,7 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [ ] Context-size estimates and saved context sets.
 - [ ] Persistent chat history and multi-root workspaces.
 - [ ] Symbols/references and additional provider adapters.
+- [ ] Antigravity CLI (`agy`): **deferred** (owner decision, October 13, 2026). An Ask-only provider looked feasible with an installed read-only custom agent, but `agy` is changing too fast and has no approval protocol for Agent mode. The problems and the conditions for revisiting are in `docs/provider-feasibility.md` ("Antigravity CLI `agy`").
 
 Agent mode was added after the MVP as an optional mode (see CLAUDE.md decision 9); Ask stays the default.
 
@@ -160,6 +161,9 @@ At the end of each development session:
   - The prompt marks it `open-in-editor="true"`, with a preface line telling the model to use it only when the question is about it. Fix: `applyLimits` now keeps attachment fields (this mark) when it omits content.
   - Shared `selectedLines`/`linesText` in `collect.ts` for Add Selection and the tracker.
   - Checks: 56 tests (prompt marking, mark kept on omission); stubbed-`vscode` host run with a fake editor (17 checks: follows editors, ignores output panels, selection replaces file, × persists across files, New chat and setting, hand-attached duplicate sent once); jsdom chip rendering (8 checks); headless-Chrome screenshots (on/off chips). Live: with the file auto-attached, Claude and Codex answered "what does this function do?" from it and ignored it for an unrelated question.
+- **Antigravity CLI `agy` spike (October 13, branch `agy-feasibility`; owner request; deferred by the owner):**
+  - `agy` 1.3.4 tested in throwaway repos. A read-only custom agent (`tools:` list, installed temporarily in `~/.gemini/config/agents/` and removed afterwards) blocked edit, create, delete and commit attempts, including with `--dangerously-skip-permissions`, and answered questions.
+  - Deferred because the CLI changes fast (68 releases), the boundary needs a file in global config, denied actions end turns with empty answers, and there's no approval protocol. Details and revisit criteria are in `docs/provider-feasibility.md`. No code was added.
 - **Next action:** Use it day to day. Later: Marketplace publisher and release.
 - **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex), a documented accepted risk. Agent mode is opt-in (CLAUDE.md decision 9).
 - **Open decisions:** Marketplace publisher identity.

@@ -116,7 +116,9 @@ Checked with Claude Code 2.1.296 and Codex CLI 0.162.1. These are the interfaces
 
 **Both CLIs silently accept an effort the model doesn't support.** Codex ran GPT-6-Luna with `ultra`, which isn't in its supported list, over both app-server and exec, with no warning. So ContextBridge checks the effort against the CLI's list before sending.
 
-## Antigravity CLI `agy` (October 13, 2026): feasibility spike
+## Antigravity CLI `agy` (October 13, 2026): feasibility spike, deferred
+
+**Status: deferred (owner decision, October 13, 2026).** Not added to ContextBridge for now. The findings below are kept for a later attempt; see "Problems" and "When to revisit" at the end of this section.
 
 Checked with `agy` 1.3.4 (Google Antigravity CLI, logged in with a Google account) on macOS, in throwaway Git repos. After every run the files and `.git` were hashed and compared.
 
@@ -145,6 +147,29 @@ Checked with `agy` 1.3.4 (Google Antigravity CLI, logged in with a Google accoun
 - `agy`'s headless behavior changes often (see `agy changelog`), so `npm run test:boundary` would need an `agy` target.
 
 Agent mode should wait for an approval protocol.
+
+**Problems (why it's deferred).**
+1. **The CLI is changing fast.** `agy changelog` at 1.3.4 lists 68 releases since 1.0.0 and 757 changes. About 47 touch headless `-p`/stream-json mode, about 46 touch permissions, and 17 touch custom agents. Several were behavior changes, not fixes:
+   - the default `-p` timeout went from 5 minutes to unlimited;
+   - error exit codes went from 1 to 3;
+   - how denied permissions are handled changed;
+   - custom agents now inherit skills, rules and subagents by default;
+   - three search tools were dropped from the default tool set but stay available to agents that list them.
+
+   `agy` also updates itself: the binary and `~/.gemini/config/` (a `.migrated` marker) changed during the spike. An update could silently change what the read-only agent can do.
+2. **The Ask-mode boundary needs a file in the user's global config.** `--agent` accepts only installed agents (`~/.gemini/config/agents/` or a project's `.agents/agents/`), not a file path. Writing into the workspace is out, so ContextBridge would have to install and maintain a file in `agy`'s global config.
+3. **A denied action ends the turn with an empty answer.** Headless mode can't prompt, so any permission request (even reading outside the workspace) is auto-denied, and the turn often ends with no response. Questions can come back blank.
+4. **`excludeDefaultComponents: true` makes answers worse.** It removes the workspace context, and the model searched `/` and `/workspace`. Leave it out and rely on the `tools:` list, which passes the boundary tests only for the version tested.
+5. **The init event can't prove the restriction.** Its `tools` field lists the whole catalog even under a custom agent, so the adapter can't check the active tool set the way Claude's `--tools` can be relied on. Only the live boundary check shows it.
+6. **No approval protocol, so no Agent mode.** stream-json input accepts only `user` messages; other events are "not supported yet". Allow/Deny cards aren't possible. The only options are `agy`'s own permission rules or `--dangerously-skip-permissions`.
+7. **`agy`'s own task-list tool is always present.** `manage_task` appears in the model's tool set even under a custom agent's `tools:` list. It writes to `agy`'s own state, not the workspace, but it's a tool ContextBridge can't remove.
+
+**When to revisit.**
+- `agy` gains a way to answer permission requests over stream-json (needed for Agent mode).
+- A per-run way to set the tool set or a read-only mode (a flag, or `--agent` accepting a file path), so no global config file is needed.
+- Headless and permission entries in the changelog slow down across several releases.
+
+Before building, rerun this spike on the then-current version, with the same attempts plus `--dangerously-skip-permissions`, hashing files and `.git`. Then add an `agy` target to `npm run test:boundary`. If it's built before all three hold, ship it as an experimental, off-by-default, Ask-only provider that refuses to run on an `agy` version newer than the last one the boundary check passed on.
 
 ## Not Yet Checked
 
