@@ -116,6 +116,36 @@ Checked with Claude Code 2.1.296 and Codex CLI 0.162.1. These are the interfaces
 
 **Both CLIs silently accept an effort the model doesn't support.** Codex ran GPT-6-Luna with `ultra`, which isn't in its supported list, over both app-server and exec, with no warning. So ContextBridge checks the effort against the CLI's list before sending.
 
+## Antigravity CLI `agy` (October 13, 2026): feasibility spike
+
+Checked with `agy` 1.3.4 (Google Antigravity CLI, logged in with a Google account) on macOS, in throwaway Git repos. After every run the files and `.git` were hashed and compared.
+
+**Interface.** `agy -p <prompt> --output-format stream-json` streams NDJSON:
+- `init`, with `conversation_id` and the tool list;
+- `step_update` events, with `text_delta`, tool steps (`tool_name`, `state`, errors) and usage;
+- a final `result`.
+
+`--conversation <id>` resumes a conversation. `agy models` lists the models (Gemini 3.8 Flash low/medium/high, Claude Sonnet/Opus 4.6, GPT-OSS 120B), and `--model`/`--effort` select them. Authentication stays with the CLI.
+
+**Default headless behavior.** Tools that need a permission (`write_file`, `command`, `read_file` outside the workspace) are auto-denied, because "headless mode cannot prompt". The repo stayed unchanged, including with `--mode plan`. Two problems:
+- A denial ends the turn with an empty response, so a model that tries even `ls` gives no answer.
+- The denials depend on permission rules, so allow rules in the user's `agy` settings would let writes through.
+
+**Read-only custom agent (the candidate Ask-mode boundary).** A Markdown agent in `~/.gemini/config/agents/` with `tools: [view_file, grep_search, find_by_name, list_dir]`, selected with `--agent <name>`. `--agent` doesn't accept a file path, so ContextBridge would have to install this file. The test agents were removed after the spike.
+- **Writes blocked.** Edit, create, delete, `git checkout -b` and `git commit` attempts left the repo byte-for-byte unchanged in new and resumed conversations, **including with `--dangerously-skip-permissions`**. Told to call `write_to_file`, `run_command` and `invoke_subagent` by name, it reported having none of them. So the restriction comes from the agent's tool set, not from permission rules, and user allow rules can't widen it. The model's own tool list was the four tools plus `manage_task`, `agy`'s task-list tool, which `agy` always adds.
+- **Questions answered.** It answered correctly and read an unattached file.
+- **`excludeDefaultComponents: true` hurts answers.** It removes the prompt sections that say where the workspace is, so the model searched `/workspace` and `/`. One question then ended empty after an out-of-workspace read was denied. Without it, the `tools:` list alone still restricted the tool set, and the answers included file links. Adding the workspace path to the prompt also fixed it.
+- The init event's `tools` lists the whole catalog even with a custom agent, so it can't be used as evidence of the restriction.
+
+**Agent mode.** No approval protocol: stream-json input accepts only `user` messages ("stream input message event %q is not supported yet"). Approval cards like Claude's and Codex's aren't possible yet. Agent mode would have to rely on `agy`'s own permission rules or `--dangerously-skip-permissions`.
+
+**Verdict.** Ask mode is feasible with an installed read-only agent (no `excludeDefaultComponents`). Open costs:
+- ContextBridge writes one file into the user's global `agy` config.
+- A denied out-of-workspace read can still end a turn with no answer, so the adapter must report that clearly.
+- `agy`'s headless behavior changes often (see `agy changelog`), so `npm run test:boundary` would need an `agy` target.
+
+Agent mode should wait for an approval protocol.
+
 ## Not Yet Checked
 
 - Whether grandchild processes (MCP servers) outlive a cancelled Codex run. Only the direct child was checked.
