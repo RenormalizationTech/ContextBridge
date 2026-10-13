@@ -13,6 +13,9 @@ const NOT_FOUND = 'Codex CLI not found. Install it, or set "contextBridge.codex.
 const SANDBOX = { ask: 'read-only', agent: 'workspace-write' } as const;
 
 export type CodexTransport = 'app-server' | 'exec';
+// Codex's own web search tool: live fetches current pages, cached uses OpenAI's index of
+// previously fetched pages, disabled turns it off. Shell commands stay offline in the sandbox.
+export type CodexWebSearch = 'live' | 'cached' | 'disabled';
 
 export class CodexProvider implements Provider {
   readonly id = 'codex';
@@ -20,11 +23,17 @@ export class CodexProvider implements Provider {
   #threadId?: string;
   readonly #configuredPath: () => string | undefined;
   readonly #transport: () => CodexTransport;
+  readonly #webSearch: () => CodexWebSearch;
 
   // `app-server` streams answers and supports approvals; `exec` is the simpler fallback.
-  constructor(configuredPath: () => string | undefined, transport: () => CodexTransport = () => 'app-server') {
+  constructor(
+    configuredPath: () => string | undefined,
+    transport: () => CodexTransport = () => 'app-server',
+    webSearch: () => CodexWebSearch = () => 'live',
+  ) {
     this.#configuredPath = configuredPath;
     this.#transport = transport;
+    this.#webSearch = webSearch;
   }
 
   get streamsTokens(): boolean {
@@ -59,11 +68,11 @@ export class CodexProvider implements Provider {
       return;
     }
     if (this.#transport() === 'app-server') {
-      this.#threadId = await runAppServerTurn(executable, request, this.#threadId, onEvent, signal);
+      this.#threadId = await runAppServerTurn(executable, request, this.#webSearch(), this.#threadId, onEvent, signal);
       return;
     }
     const sandbox = SANDBOX[request.mode];
-    const config = ['-c', `sandbox_mode="${sandbox}"`];
+    const config = ['-c', `sandbox_mode="${sandbox}"`, '-c', `web_search="${this.#webSearch()}"`];
     const args = this.#threadId
       ? ['exec', 'resume', '--json', '--skip-git-repo-check', ...config, this.#threadId, '-']
       : ['exec', '--json', '--skip-git-repo-check', ...config, '--sandbox', sandbox, '-'];

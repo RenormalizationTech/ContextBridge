@@ -81,6 +81,7 @@ Ask mode is enforced through each CLI's own configuration, not just by asking th
 | --- | --- | --- |
 | How | Started with only read and search tools (`Read`, `Grep`, `Glob`, `WebFetch`, `WebSearch`, `Agent`, `ToolSearch`). Other permission requests are denied. | Runs in the read-only sandbox with approvals turned off, including for follow-up questions. Any approval request that arrives anyway is declined. |
 | Can read and search your files | Yes | Yes, including read-only shell commands |
+| Can search the web | Yes (`WebSearch`, `WebFetch`) | Yes, with Codex's web search tool (`contextBridge.codex.webSearch`, default `live`). Shell commands stay offline. |
 | Can edit, create or delete files, or run Git commands that change the repo | No | No |
 
 **Not covered:** your own **MCP servers** (Claude Code) and **plugins** (Codex) stay available, because ContextBridge keeps each CLI's capabilities. They run with whatever access they have, so an MCP server that writes files or updates an external service, or a Codex computer-use plugin, can still have side effects. If that matters to you, remove or disable them in the CLI's own configuration.
@@ -98,6 +99,7 @@ Conversations are saved by each CLI like any other session (for example, they ap
 | `contextBridge.claude.path` | empty | Path to `claude` if it isn't found automatically |
 | `contextBridge.codex.path` | empty | Path to `codex` if it isn't found automatically |
 | `contextBridge.codex.transport` | `app-server` | `app-server` (streams, approval cards) or `exec` (fallback) |
+| `contextBridge.codex.webSearch` | `live` | Codex web search: `live` (current pages), `cached` (OpenAI's index, may be slightly stale), or `disabled` |
 
 ## Troubleshooting
 

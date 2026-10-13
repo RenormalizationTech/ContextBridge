@@ -196,6 +196,7 @@ test('Codex adapter: read-only sandbox on the first question and on resume', asy
     assert.ok(!args.some((arg: string) => /danger|workspace-write|bypass/.test(arg)));
   }
   assert.equal(first.args[first.args.indexOf('--sandbox') + 1], 'read-only');
+  for (const { args } of [first, second]) assert.ok(args.includes('web_search="live"'), 'exec also enables web search');
   assert.deepEqual(second.args.slice(0, 2), ['exec', 'resume']);
   assert.ok(second.args.includes('thread-1'));
 });
@@ -290,8 +291,10 @@ test('Codex app-server: read-only thread settings, streamed text, resume, and As
   assert.deepEqual(log[0].args, ['app-server', '--stdio']);
   const start = log.find((entry) => entry.method === 'thread/start');
   assert.deepEqual({ sandbox: start.params.sandbox, approvalPolicy: start.params.approvalPolicy }, { sandbox: 'read-only', approvalPolicy: 'never' });
+  assert.deepEqual(start.params.config, { web_search: 'live' });
   const resume = log.find((entry) => entry.method === 'thread/resume');
   assert.deepEqual({ threadId: resume.params.threadId, sandbox: resume.params.sandbox, approvalPolicy: resume.params.approvalPolicy }, { threadId: 'thread-1', sandbox: 'read-only', approvalPolicy: 'never' });
+  assert.deepEqual(resume.params.config, { web_search: 'live' });
   assert.equal(log.find((entry) => entry.method === 'turn/start').params.input[0].text, 'What does a.py do?');
 });
 

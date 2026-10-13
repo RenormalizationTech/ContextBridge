@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { ClaudeProvider } from '../src/providers/claudeProvider.ts';
 import { askModePermission, ClaudeStreamParser, describeToolCall } from '../src/providers/claudeStream.ts';
 import { CodexProvider } from '../src/providers/codexProvider.ts';
+import { CodexAppServerParser } from '../src/providers/codexAppServerStream.ts';
 import { CodexStreamParser, unwrapShell } from '../src/providers/codexStream.ts';
 import type { ProviderEvent } from '../src/providers/types.ts';
 
@@ -95,4 +96,12 @@ test('providers report a missing CLI from a bad configured path', async () => {
     assert.equal(status.ok, false);
     assert.equal(status.installed, false);
   }
+});
+
+test('Codex app-server parser shows a web search once its query is known', () => {
+  const parser = new CodexAppServerParser();
+  assert.deepEqual(parser.handle('item/started', { item: { type: 'webSearch', id: 'w1', query: '' } }), []);
+  assert.deepEqual(parser.handle('item/completed', { item: { type: 'webSearch', id: 'w1', query: 'rust latest release', action: { type: 'search' } } }), [
+    { type: 'tool', name: 'Web search', detail: 'rust latest release' },
+  ]);
 });

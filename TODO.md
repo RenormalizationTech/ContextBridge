@@ -123,6 +123,11 @@ At the end of each development session:
   - **Always allow:** approval cards gain a third button, scoped to the current chat (all edits / one exact command / one tool). It's never persisted, every auto-approval is shown, and it resets on New chat or when switching chats.
   - **Syntax colors:** highlight.js 11.12 (common languages) in code blocks, with light and dark palettes keyed off VS Code's body theme class.
   - **Checks:** 35 tests; stubbed host runs of the picker and of Always allow (edit scope auto-approves a later write, a plain Allow still asks again, New chat resets); jsdom check of cards, the + button and colored spans.
+- **Codex web search (owner request):**
+  - `contextBridge.codex.webSearch` (`live` default / `cached` / `disabled`), passed as `config.web_search` on thread start/resume (and `-c web_search=` for exec).
+  - Codex's built-in default already allowed search (config `web_search: null`), but the mode is now explicit.
+  - Activity lines show the query, which is only known on `item/completed`.
+  - Checks: live searches for both providers; `test:boundary -- codex` still passes.
 - **Agent permission level (owner request, modeled on Copilot's picker):**
   - A Default Permissions / Bypass Approvals dropdown below the input in Agent mode, per chat, saved with history, with the new-chat default from `contextBridge.agent.defaultPermissions`.
   - Bypass auto-approves each request with a chat notice and shows a red banner. A confirmation appears the first time, with "Don't Ask Again" stored in globalState.

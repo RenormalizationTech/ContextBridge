@@ -5,7 +5,7 @@ import { AttachmentStore } from './context/attachmentStore.ts';
 import { collectFile, collectSelections, type CollectResult } from './context/collect.ts';
 import { pickFiles } from './context/picker.ts';
 import { ClaudeProvider } from './providers/claudeProvider.ts';
-import { CodexProvider, type CodexTransport } from './providers/codexProvider.ts';
+import { CodexProvider, type CodexTransport, type CodexWebSearch } from './providers/codexProvider.ts';
 import { MockProvider } from './providers/mockProvider.ts';
 import type { Mode, PermissionLevel } from './providers/types.ts';
 
@@ -17,7 +17,11 @@ export function activate(context: vscode.ExtensionContext): void {
   const pathSetting = (key: string) => config().get<string>(key)?.trim() || undefined;
   const providers = [
     new ClaudeProvider(() => pathSetting('claude.path')),
-    new CodexProvider(() => pathSetting('codex.path'), () => config().get<CodexTransport>('codex.transport', 'app-server')),
+    new CodexProvider(
+      () => pathSetting('codex.path'),
+      () => config().get<CodexTransport>('codex.transport', 'app-server'),
+      () => config().get<CodexWebSearch>('codex.webSearch', 'live'),
+    ),
     new MockProvider(),
   ];
   // Per-workspace storage, like VS Code's own chat history.

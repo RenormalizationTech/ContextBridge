@@ -181,6 +181,21 @@
           "default": "app-server",
           "description": "How ContextBridge talks to Codex."
         },
+        "contextBridge.codex.webSearch": {
+          "type": "string",
+          "enum": [
+            "live",
+            "cached",
+            "disabled"
+          ],
+          "enumDescriptions": [
+            "Search the live web (current pages).",
+            "Search OpenAI's index of previously fetched pages (may be slightly out of date).",
+            "No web search."
+          ],
+          "default": "live",
+          "description": "Codex's web search tool, in both Ask and Agent mode. Shell commands stay offline in Codex's sandbox either way. (Claude Code's web search is always available.)"
+        },
         "contextBridge.history.maxChats": {
           "type": "number",
           "default": 50,

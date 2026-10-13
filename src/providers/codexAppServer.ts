@@ -3,6 +3,7 @@ import { withLoginHint } from './claudeStream.ts';
 import { CodexAppServerParser } from './codexAppServerStream.ts';
 import { unwrapShell } from './codexStream.ts';
 import { captureStderr, childEnv, readLines } from './process.ts';
+import type { CodexWebSearch } from './codexProvider.ts';
 import type { ProviderEvent, ProviderRequest } from './types.ts';
 
 // Thread settings per mode. Ask: read-only sandbox, and the model can never ask for more.
@@ -19,6 +20,7 @@ const THREAD_SETTINGS = {
 export async function runAppServerTurn(
   executable: string,
   request: ProviderRequest,
+  webSearch: CodexWebSearch,
   threadId: string | undefined,
   onEvent: (event: ProviderEvent) => void,
   signal: AbortSignal,
@@ -26,7 +28,8 @@ export async function runAppServerTurn(
   const child = spawn(executable, ['app-server', '--stdio'], { cwd: request.cwd, env: await childEnv(), stdio: ['pipe', 'pipe', 'pipe'] });
   const stderr = captureStderr(child);
   const parser = new CodexAppServerParser();
-  const settings = THREAD_SETTINGS[request.mode];
+  // Web search is set explicitly so it doesn't depend on Codex's built-in default.
+  const settings = { ...THREAD_SETTINGS[request.mode], config: { web_search: webSearch } };
   let terminal = false;
   let nextId = 1;
   const pending = new Map<number, { resolve: (result: any) => void; reject: (error: Error) => void }>();

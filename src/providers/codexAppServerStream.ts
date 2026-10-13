@@ -24,6 +24,9 @@ export class CodexAppServerParser {
       }
       case 'item/started':
         return this.#itemStarted(params.item ?? {});
+      case 'item/completed':
+        // A web search's query is only known once it finishes.
+        return params.item?.type === 'webSearch' ? webSearchEvent(params.item) : [];
       case 'error':
         if (!params.willRetry) this.lastError = params.error?.message;
         return [];
@@ -56,9 +59,15 @@ export class CodexAppServerParser {
       case 'mcpToolCall':
         return [{ type: 'tool', name: `${item.server}: ${item.tool}`, detail: '' }];
       case 'webSearch':
-        return [{ type: 'tool', name: 'Web search', detail: item.query ?? '' }];
+        return item.query ? webSearchEvent(item) : [];
       default:
         return [];
     }
   }
+}
+
+function webSearchEvent(item: any): ProviderEvent[] {
+  const action = item.action ?? {};
+  const detail = item.query || action.query || action.url || '';
+  return [{ type: 'tool', name: action.type === 'openPage' || action.type === 'open_page' ? 'Open page' : 'Web search', detail }];
 }
