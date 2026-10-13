@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import type { AttachmentStore } from '../context/attachmentStore.ts';
 import { resolveAttachment } from '../context/collect.ts';
 import { applyLimits, buildPrompt } from '../context/payload.ts';
-import type { Provider } from '../providers/types.ts';
+import type { Provider, ProviderStatus } from '../providers/types.ts';
 import type { HostMessage, WebviewMessage } from './messages.ts';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
@@ -10,15 +10,54 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   private view?: vscode.WebviewView;
   private pending?: AbortController;
+  private providerId: string;
+  private readonly statuses = new Map<string, ProviderStatus>();
   private readonly extensionUri: vscode.Uri;
-  private readonly provider: Provider;
+  private readonly providers: readonly Provider[];
   private readonly attachments: AttachmentStore;
+  private readonly onProviderSelected: (id: string) => void;
 
-  constructor(extensionUri: vscode.Uri, provider: Provider, attachments: AttachmentStore) {
+  constructor(
+    extensionUri: vscode.Uri,
+    providers: readonly Provider[],
+    providerId: string,
+    attachments: AttachmentStore,
+    onProviderSelected: (id: string) => void,
+  ) {
     this.extensionUri = extensionUri;
-    this.provider = provider;
+    this.providers = providers;
+    this.providerId = providers.some((provider) => provider.id === providerId) ? providerId : providers[0].id;
     this.attachments = attachments;
+    this.onProviderSelected = onProviderSelected;
     attachments.onDidChange(() => this.postState());
+  }
+
+  private get provider(): Provider {
+    return this.providers.find((provider) => provider.id === this.providerId) ?? this.providers[0];
+  }
+
+  // Switching providers starts a new conversation; attachments are kept.
+  selectProvider(id: string): void {
+    if (id === this.providerId || !this.providers.some((provider) => provider.id === id)) return;
+    this.pending?.abort();
+    this.providerId = id;
+    this.onProviderSelected(id);
+    this.newChat();
+    void this.refreshStatus();
+  }
+
+  newChat(): void {
+    this.pending?.abort();
+    this.provider.resetConversation();
+    this.post({ type: 'cleared' });
+  }
+
+  async refreshStatus(): Promise<void> {
+    const provider = this.provider;
+    this.statuses.delete(provider.id);
+    this.postState();
+    this.statuses.set(provider.id, await provider.checkStatus());
+    this.postState();
   }
 
   // Shows the chat view without taking focus from the editor.
@@ -42,7 +81,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private handleMessage(message: WebviewMessage): void {
     switch (message.type) {
       case 'ready':
-        this.postState();
+        if (this.statuses.has(this.providerId)) this.postState();
+        else void this.refreshStatus();
+        break;
+      case 'newChat':
+        this.newChat();
+        break;
+      case 'selectProvider':
+        this.selectProvider(message.id);
         break;
       case 'ask':
         void this.ask(message.question);
@@ -63,7 +109,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   private postState(): void {
-    this.post({ type: 'state', provider: this.provider.label, attachments: this.attachments.summaries() });
+    this.post({
+      type: 'state',
+      providers: this.providers.map(({ id, label }) => ({ id, label })),
+      providerId: this.providerId,
+      status: this.statuses.get(this.providerId),
+      attachments: this.attachments.summaries(),
+    });
   }
 
   private async openAttachment(id: string): Promise<void> {
@@ -88,7 +140,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
     const controller = new AbortController();
     this.pending = controller;
-    this.post({ type: 'start', question });
+    const sent = this.attachments.summaries().map((item) => (item.range ? `${item.path}:${item.range.start}-${item.range.end}` : item.path));
+    this.post({ type: 'start', question, attachments: sent });
     try {
       const resolved = applyLimits(await Promise.all(this.attachments.items.map(resolveAttachment)));
       for (const attachment of resolved) {
@@ -126,12 +179,19 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   <title>ContextBridge</title>
 </head>
 <body>
+  <header>
+    <div class="toolbar">
+      <select id="provider" aria-label="Provider"></select>
+      <button type="button" id="new-chat" class="secondary">New chat</button>
+    </div>
+    <div id="status" class="muted"></div>
+  </header>
   <div id="messages" aria-live="polite"></div>
   <form id="composer">
     <div id="attachments"></div>
     <textarea id="question" rows="3" placeholder="Ask about your code (Enter to send, Shift+Enter for a new line)"></textarea>
     <div class="actions">
-      <span id="provider"></span>
+      <span class="spacer"></span>
       <button type="button" id="cancel" hidden>Cancel</button>
       <button type="submit" id="send">Ask</button>
     </div>

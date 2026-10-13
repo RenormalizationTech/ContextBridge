@@ -57,6 +57,11 @@
         "command": "contextBridge.clearAttachments",
         "title": "Clear Attachments",
         "category": "ContextBridge"
+      },
+      {
+        "command": "contextBridge.newChat",
+        "title": "New Chat",
+        "category": "ContextBridge"
       }
     ],
     "menus": {
@@ -89,6 +94,36 @@
           "when": "editorIsOpen"
         }
       ]
+    },
+    "configuration": {
+      "title": "ContextBridge",
+      "properties": {
+        "contextBridge.provider": {
+          "type": "string",
+          "enum": [
+            "claude",
+            "codex",
+            "mock"
+          ],
+          "enumDescriptions": [
+            "Claude Code CLI",
+            "Codex CLI",
+            "Canned answers for development"
+          ],
+          "default": "claude",
+          "description": "Provider that answers questions."
+        },
+        "contextBridge.claude.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the claude executable. Leave empty to find it automatically."
+        },
+        "contextBridge.codex.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the codex executable. Leave empty to find it automatically."
+        }
+      }
     }
   },
   "scripts": {

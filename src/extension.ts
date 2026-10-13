@@ -2,11 +2,26 @@ import * as vscode from 'vscode';
 import { ChatViewProvider } from './chat/chatViewProvider.ts';
 import { AttachmentStore } from './context/attachmentStore.ts';
 import { collectFile, collectSelections, type CollectResult } from './context/collect.ts';
+import { ClaudeProvider } from './providers/claudeProvider.ts';
+import { CodexProvider } from './providers/codexProvider.ts';
 import { MockProvider } from './providers/mockProvider.ts';
 
 export function activate(context: vscode.ExtensionContext): void {
   const attachments = new AttachmentStore();
-  const chatView = new ChatViewProvider(context.extensionUri, new MockProvider(), attachments);
+  const config = () => vscode.workspace.getConfiguration('contextBridge');
+  const pathSetting = (key: string) => config().get<string>(key)?.trim() || undefined;
+  const providers = [
+    new ClaudeProvider(() => pathSetting('claude.path')),
+    new CodexProvider(() => pathSetting('codex.path')),
+    new MockProvider(),
+  ];
+  const chatView = new ChatViewProvider(
+    context.extensionUri,
+    providers,
+    config().get<string>('provider', 'claude'),
+    attachments,
+    (id) => void config().update('provider', id, vscode.ConfigurationTarget.Global),
+  );
 
   const addAll = (results: CollectResult[]) => {
     for (const result of results) {
@@ -39,6 +54,13 @@ export function activate(context: vscode.ExtensionContext): void {
       addAll(await collectSelections(editor));
     }),
     vscode.commands.registerCommand('contextBridge.clearAttachments', () => attachments.clear()),
+    vscode.commands.registerCommand('contextBridge.newChat', () => chatView.newChat()),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('contextBridge.provider')) chatView.selectProvider(config().get<string>('provider', 'claude'));
+      if (event.affectsConfiguration('contextBridge.claude.path') || event.affectsConfiguration('contextBridge.codex.path')) {
+        void chatView.refreshStatus();
+      }
+    }),
   );
 }
 

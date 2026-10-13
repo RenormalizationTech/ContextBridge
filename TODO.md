@@ -9,7 +9,7 @@ This is the handoff checklist for continuing development on another machine. Pro
 - [x] Document MVP goals and milestones.
 - [ ] Implement the extension. The Phase 2 scaffold exists (mock provider only).
 
-**Next task:** Phase 4, the Claude Code adapter.
+**Next task:** Phase 5 (verify and release); consider Markdown rendering of answers.
 
 ## Continue on Another Machine
 
@@ -68,14 +68,14 @@ For an existing checkout, inspect `git status` and save any local work before up
 
 ## Phase 4 — Provider Chat
 
-- [ ] Implement the Claude Code adapter using the validated Phase 1 approach.
-- [ ] Implement the Codex adapter using the validated Phase 1 approach (may follow the first provider's release).
-- [ ] Add provider selection and prerequisite/authentication status.
-- [ ] Render streaming answers and support cancellation and process cleanup.
-- [ ] Handle missing executables, authentication failures, connection failures, and provider errors.
-- [ ] Define follow-up history and provider-switching behavior; keep reused context visible.
-- [ ] Apply the verified ask-only restrictions to every request.
-- [ ] Render provider output safely and keep credentials and attached source content out of routine logs.
+- [x] Implement the Claude Code adapter using the validated Phase 1 approach.
+- [x] Implement the Codex adapter using the validated Phase 1 approach (may follow the first provider's release).
+- [x] Add provider selection and prerequisite/authentication status.
+- [x] Render streaming answers and support cancellation and process cleanup.
+- [x] Handle missing executables, authentication failures, connection failures, and provider errors.
+- [x] Define follow-up history and provider-switching behavior; keep reused context visible.
+- [x] Apply the verified ask-only restrictions to every request.
+- [x] Render provider output safely and keep credentials and attached source content out of routine logs.
 
 **Done when:** Supported providers handle the same file/selection question workflow, including cancellation and clear failures, without modifying workspace files.
 
@@ -112,9 +112,18 @@ At the end of each development session:
 
 ### Latest Handoff
 
-- **Updated:** October 12, 2026 (branch `attachments`).
-- **Implemented:** Phase 3 attachments. Explorer/editor-tab/palette "Add File", editor "Add Selection" (multi-cursor; whole file when empty), chips with open/remove/clear, files read at send time (unsaved edits included), selections snapshotted, duplicates ignored, binary files and folders refused, files over 256 KB / beyond 1 MB total / missing at send sent as path-only references with a visible notice.
-- **Next action:** Phase 4, the Claude Code adapter.
-- **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex); their side effects are a documented, accepted risk.
-- **Open decisions:** Claude MCP server discovery for per-server allow rules (wildcard `mcp__*` doesn't work); Codex transport (`exec --json` vs `app-server`); provider executable discovery.
-- **Validation:** `npm run check` passes (typecheck, 10 unit tests, build). A smoke test of the built extension with a stubbed `vscode` module and real files confirmed: binary and folder refused, duplicate ignored, selection range 2-3 (end-of-line edge excluded), oversized and deleted files sent as references with notices, remove/clear. The owner confirmed attachments work in the Extension Development Host (F5).
+- **Updated:** October 12, 2026 (branch `claude-adapter`).
+- **Implemented:** Phase 4 provider chat.
+  - Claude Code adapter: stream-json in/out, read-only `--tools`, permission prompts answered over stdio (allows read tools and all `mcp__*` tools), `--resume` follow-ups.
+  - Codex adapter: `exec --json` with `sandbox_mode="read-only"`, `exec resume` follow-ups.
+  - CLI discovery (setting, then login-shell PATH, then common install dirs), with the login-shell PATH passed to the child processes.
+  - Status line (installed / logged in), provider dropdown, New chat, tool activity lines, the attachments sent shown under each question, cancellation, and errors for a missing CLI, logged-out state and early exit.
+- **Next action:** Phase 5 (verify and release); consider Markdown rendering of answers.
+- **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex); their side effects are a documented, accepted risk. Follow-ups resume the CLI session and re-send current attachments; switching providers starts a new chat.
+- **Open decisions:** Markdown rendering of answers (currently plain text); Codex `app-server` for token streaming.
+- **Validation:** `npm run check` passes (typecheck, 15 unit tests, build). Live runs on the Git fixture:
+  - Claude: answer from attachments, follow-up remembered context, MCP search allowed, edit/new file/commit blocked, cancel left no process.
+  - Codex: answer, resumed session blocked edit/new file/commit.
+  - In both cases git status and file hashes were unchanged.
+  - Built extension with stubbed `vscode`: status, real Claude answer about an attached file, provider switch.
+  - The owner confirmed it works in the Extension Development Host (F5).

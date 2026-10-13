@@ -1,4 +1,4 @@
-import type { Provider, ProviderEvent, ProviderRequest } from './types.ts';
+import type { Provider, ProviderEvent, ProviderRequest, ProviderStatus } from './types.ts';
 
 // Streams a canned answer so the editor workflow can be developed without a live account.
 export class MockProvider implements Provider {
@@ -29,5 +29,11 @@ export class MockProvider implements Provider {
       await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     }
     onEvent({ type: 'done', cancelled: signal.aborted });
+  }
+
+  resetConversation(): void {}
+
+  async checkStatus(): Promise<ProviderStatus> {
+    return { ok: true, detail: 'Canned answers for development' };
   }
 }

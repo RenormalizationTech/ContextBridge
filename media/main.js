@@ -8,11 +8,28 @@
   const send = document.getElementById('send');
   const cancel = document.getElementById('cancel');
   const provider = document.getElementById('provider');
+  const status = document.getElementById('status');
+  const newChat = document.getElementById('new-chat');
   let answer = null;
+  let busy = false;
 
-  function setBusy(busy) {
-    send.disabled = busy;
-    cancel.hidden = !busy;
+  function setBusy(value) {
+    busy = value;
+    send.disabled = value;
+    cancel.hidden = !value;
+    provider.disabled = value;
+  }
+
+  function renderProviders(providers, selectedId) {
+    if (provider.options.length !== providers.length) {
+      provider.replaceChildren(...providers.map((item) => new Option(item.label, item.id)));
+    }
+    provider.value = selectedId;
+  }
+
+  function renderStatus(value) {
+    status.textContent = value ? value.detail : 'Checking provider...';
+    status.className = value && !value.ok ? 'error' : 'muted';
   }
 
   function addMessage(role, text) {
@@ -85,18 +102,33 @@
   });
 
   cancel.addEventListener('click', () => vscode.postMessage({ type: 'cancel' }));
+  newChat.addEventListener('click', () => vscode.postMessage({ type: 'newChat' }));
+  provider.addEventListener('change', () => vscode.postMessage({ type: 'selectProvider', id: provider.value }));
 
   window.addEventListener('message', (event) => {
     const message = event.data;
     switch (message.type) {
       case 'state':
-        provider.textContent = message.provider;
+        renderProviders(message.providers, message.providerId);
+        renderStatus(message.status);
         renderAttachments(message.attachments);
         break;
-      case 'start':
-        addMessage('user', message.question);
+      case 'start': {
+        const user = addMessage('user', message.question);
+        if (message.attachments.length > 0) {
+          const sent = document.createElement('div');
+          sent.className = 'sent';
+          sent.textContent = `Attached: ${message.attachments.join(', ')}`;
+          user.appendChild(sent);
+        }
         answer = addMessage('assistant', '');
         setBusy(true);
+        break;
+      }
+      case 'cleared':
+        messages.replaceChildren();
+        answer = null;
+        setBusy(false);
         break;
       case 'text':
         if (answer) {
@@ -108,14 +140,18 @@
         addMessage('status', message.text);
         break;
       case 'tool':
-        addMessage('status', `${message.name}: ${message.detail}`);
+        if (!busy) break;
+        // Keep tool activity above the answer text that follows it.
+        messages.insertBefore(addMessage('status', message.detail ? `${message.name} ${message.detail}` : message.name), answer);
         break;
       case 'done':
+        if (!busy) break;
         if (message.cancelled) addMessage('status', 'Cancelled.');
         answer = null;
         setBusy(false);
         break;
       case 'error':
+        if (answer && !answer.textContent) answer.remove();
         addMessage('error', message.message);
         answer = null;
         setBusy(false);

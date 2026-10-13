@@ -47,6 +47,8 @@ The prompt goes in on **stdin**. `--tools` and `--allowedTools` accept a variabl
 
 **MCP tools (owner decision: keep them all).** Ask mode should keep every MCP tool available. A wildcard `mcp__*` allow rule does **not** work: the call was still denied. A rule per server does work: `mcp__local-searxng` allowed `mcp__local-searxng__search_web`. So the adapter must add one `mcp__<server>` rule per configured server to `--allowedTools`. Server names are normalized in tool names (`claude.ai Claude Docs` → `mcp__claude_ai_Claude_Docs__*`). How to discover servers before launch (`claude mcp list`, or the `init` event's tool list) is to be decided in Phase 4.
 
+**Phase 4 resolution:** no discovery is needed. The adapter runs with `--input-format stream-json --permission-mode default --permission-prompt-tool stdio`. The CLI then sends each permission prompt to the extension as a `control_request` (`can_use_tool`). The extension answers `allow` for read tools and any `mcp__*` tool, and `deny` for everything else. The hard boundary is still `--tools`: write tools don't exist, regardless of what the extension answers. (A plain `claude -p` in stream-json input mode emits no `init` event until it receives the first message, so probing for servers without a model call isn't possible.)
+
 ### Tests
 
 These ran in a throwaway Git fixture (`src/calc.py`, plus `src/helper.py` containing a unique marker). After each run I checked the outcome with `git status`, `git log`, `git worktree list` and file hashes, not just the model's reply.
@@ -87,7 +89,7 @@ The prompt goes in on stdin (`-`). `--ephemeral` avoids saving session files.
 ## Not Yet Checked
 
 - Whether grandchild processes (MCP servers) outlive a cancelled Codex run. Only the direct child was checked.
-- Follow-up questions: `--resume` / `codex exec resume` versus re-sending history.
+- Follow-up questions: resolved in Phase 4 with `--resume <session_id>` (Claude) and `codex exec resume <thread_id>` (Codex). A resumed Codex session stayed read-only (`-c sandbox_mode="read-only"`, because `resume` has no `--sandbox` flag): edit, new file and commit were all blocked.
 - Behavior with a large number of attachments, or large ones.
 - Codex `app-server` protocol (`codex app-server generate-ts`) for streaming.
 

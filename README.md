@@ -16,7 +16,18 @@ npm run check      # typecheck, unit tests, and build
 npm run watch      # rebuild on change
 ```
 
-To try the extension, open this folder in VS Code and press **F5** ("Run Extension"). In the Extension Development Host window, open a folder, then select the ContextBridge icon in the Activity Bar (or run **ContextBridge: Open**). The chat currently uses a mock provider.
+To try the extension, open this folder in VS Code and press **F5** ("Run Extension"). In the Extension Development Host window, open a folder, then select the ContextBridge icon in the Activity Bar (or run **ContextBridge: Open**). Choose **Claude Code**, **Codex**, or **Mock** (canned answers) from the dropdown at the top of the chat. The line below it shows whether the CLI was found and is logged in.
+
+### Providers
+
+ContextBridge runs the official CLIs you already have installed and logged in. It has no accounts or API keys of its own.
+
+- **Claude Code** (`claude`): answers stream as they're written. Ask mode starts it with only read and search tools (`Read`, `Grep`, `Glob`, `WebFetch`, `WebSearch`, `Agent`, `ToolSearch`), so it has no tool that can edit files or run shell commands.
+- **Codex** (`codex`): runs `codex exec` in the read-only sandbox. Codex can run shell commands to read and search, but the sandbox blocks writes. Answers arrive as whole messages rather than streaming.
+- Follow-up questions continue the same provider conversation, and every question re-sends the current attachments. **New chat** or switching providers starts a new conversation. Conversations are saved by the CLI like any other session.
+- Settings: `contextBridge.provider`, and `contextBridge.claude.path` / `contextBridge.codex.path` if the CLI isn't found automatically.
+
+**What Ask mode does and doesn't guarantee:** the providers' built-in file-editing, shell-write and Git tools are blocked. Your own MCP servers (Claude Code) and plugins (Codex) stay available, and they can have side effects that ContextBridge doesn't control. Examples are an MCP server that writes files or updates an external service, or a Codex computer-use plugin. Remove or disable those in the CLI's own configuration if that matters to you. See [docs/provider-feasibility.md](docs/provider-feasibility.md).
 
 ### Attachments
 

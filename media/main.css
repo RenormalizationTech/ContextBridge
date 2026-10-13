@@ -10,6 +10,44 @@ body {
   color: var(--vscode-foreground);
 }
 
+header {
+  padding: 8px 0 6px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.toolbar {
+  display: flex;
+  gap: 6px;
+}
+
+select {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  color: var(--vscode-dropdown-foreground);
+  background: var(--vscode-dropdown-background);
+  border: 1px solid var(--vscode-dropdown-border, transparent);
+}
+
+#status {
+  margin-top: 4px;
+  font-size: 0.9em;
+}
+
+#status.error {
+  color: var(--vscode-errorForeground);
+}
+
+.sent {
+  margin-top: 4px;
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground);
+}
+
+.spacer {
+  flex: 1;
+}
+
 #messages {
   flex: 1;
   overflow-y: auto;
@@ -31,6 +69,7 @@ body {
 
 .message.status,
 .muted {
+  font-size: 0.95em;
   color: var(--vscode-descriptionForeground);
   font-style: italic;
 }
@@ -117,12 +156,6 @@ textarea:focus {
   gap: 6px;
 }
 
-#provider {
-  flex: 1;
-  color: var(--vscode-descriptionForeground);
-  font-size: 0.9em;
-}
-
 button {
   padding: 3px 12px;
   border: none;
@@ -141,7 +174,8 @@ button:disabled {
   cursor: default;
 }
 
-#cancel {
+#cancel,
+button.secondary {
   color: var(--vscode-button-secondaryForeground);
   background: var(--vscode-button-secondaryBackground);
 }
