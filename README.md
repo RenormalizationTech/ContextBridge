@@ -24,6 +24,8 @@ code --install-extension dist/contextbridge-0.1.0.vsix
 
 If `code` isn't on your PATH, open the Extensions view in VS Code, choose **⋯ → Install from VSIX…**, and pick the file.
 
+Run `npm install` once in each fresh clone (and again after a `git pull` that changes `package.json`). Without it, building or pressing F5 fails with `Cannot find package 'esbuild'`. Newer npm versions may warn that `esbuild` and `@vscode/vsce-sign` have install scripts not yet approved. The build works without them, so you can ignore the warning, or approve them with `npm install-scripts approve <package>`.
+
 ## Usage
 
 1. Open the chat with **ContextBridge: Open**. It appears in the secondary (right) side bar, next to Copilot Chat if you use it. Use **View → Appearance → Secondary Side Bar** if it's hidden.
@@ -110,7 +112,7 @@ Conversations are saved by each CLI like any other session (for example, they ap
 
 ## Development
 
-Requirements: Node.js 22+ (developed on 24) and npm.
+Requirements: Node.js 22+ (developed on 24, also built on 26) and npm.
 
 ```sh
 npm install

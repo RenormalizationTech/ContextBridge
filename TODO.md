@@ -9,7 +9,7 @@ This is the handoff checklist for continuing development on another machine. Pro
 - [x] Document MVP goals and milestones.
 - [ ] Implement the extension. The Phase 2 scaffold exists (mock provider only).
 
-**Next task:** Day-to-day use of 0.1.0; verify setup on the second machine. Later: Marketplace publication.
+**Next task:** Day-to-day use of 0.1.0. Later: Marketplace publication.
 
 ## Continue on Another Machine
 
@@ -84,7 +84,7 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [x] Add meaningful checks for attachment payload correctness, provider event handling, cancellation, and the ask-only restriction. (Unit tests, fake-CLI adapter tests in `test/fakeCli.test.ts`, and the live `npm run test:boundary`.)
 - [x] Manually verify file attachment, selection attachment, preview, removal, streaming, and follow-up behavior in VS Code. (Owner F5 checks after Phases 3 and 4 and Markdown.)
 - [x] Repeat ask-only boundary checks with the actual extension and each supported provider. (`npm run test:boundary` drives the shipped adapters against the real CLIs.)
-- [ ] Verify setup from a fresh checkout on the second development machine; document any environment limitations.
+- [x] Verify setup from a fresh checkout on the second development machine; document any environment limitations. (October 13, 2026: a fresh clone on the owner's MacBook Air with Node 26.11.1 built after `npm install`. Findings documented in the README: `npm install` is required before F5 or a build, and newer npm's install-scripts warning for esbuild/vsce-sign is harmless.)
 - [x] Document installation, reliance on the provider CLIs for authentication, usage, local-only support, and exact access behavior (ask-only enforced; attachments focus but do not isolate).
 - [x] Package an installable VSIX for personal use (`npm run package` → `dist/contextbridge-0.1.0.vsix`).
 - [ ] Later: choose a publisher identity, create a short demonstration, and publish to the VS Code Marketplace.
@@ -139,7 +139,7 @@ At the end of each development session:
   - Only the `.woff2` fonts ship, in `dist/katex/`, and the CSP adds `font-src` for the extension's own files.
   - Checks: 37 tests; jsdom render of streamed math through `dist/webview.js`; all 20 referenced fonts present.
   - Fix: subscripts, accents and `\phi` showed as gaps in VS Code, because the webview CSP blocked KaTeX's inline style attributes. `style-src` now allows `'unsafe-inline'`; scripts stay nonce-only. Reproduced and confirmed with headless-Chrome screenshots under the old and new CSP.
-- **Next action:** Use it day to day; verify a fresh checkout on the second machine. Later: Marketplace publisher and release.
+- **Next action:** Use it day to day. Later: Marketplace publisher and release.
 - **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex), a documented accepted risk. Agent mode is opt-in (CLAUDE.md decision 9).
 - **Open decisions:** Marketplace publisher identity.
 - **Validation:**
