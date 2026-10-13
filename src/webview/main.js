@@ -1,4 +1,7 @@
-// Chat webview script. Provider output is inserted as text, never as HTML.
+// Chat webview script, bundled to dist/webview.js. Answers are rendered as Markdown with raw
+// HTML disabled (see markdown.ts); everything else is inserted as text.
+import { renderMarkdown } from './markdown.ts';
+
 (function () {
   const vscode = acquireVsCodeApi();
   const messages = document.getElementById('messages');
@@ -11,7 +14,27 @@
   const status = document.getElementById('status');
   const newChat = document.getElementById('new-chat');
   let answer = null;
+  let answerText = '';
+  let renderScheduled = false;
   let busy = false;
+
+  // Re-render the streaming answer at most once per frame.
+  function scheduleRender() {
+    if (renderScheduled) return;
+    renderScheduled = true;
+    requestAnimationFrame(() => {
+      renderScheduled = false;
+      if (!answer) return;
+      answer.innerHTML = renderMarkdown(answerText);
+      answer.scrollIntoView({ block: 'end' });
+    });
+  }
+
+  function finishAnswer() {
+    if (answer) answer.innerHTML = renderMarkdown(answerText);
+    answer = null;
+    answerText = '';
+  }
 
   function setBusy(value) {
     busy = value;
@@ -102,6 +125,22 @@
   });
 
   cancel.addEventListener('click', () => vscode.postMessage({ type: 'cancel' }));
+  messages.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href]');
+    if (link) {
+      event.preventDefault();
+      vscode.postMessage({ type: 'openLink', href: link.getAttribute('href') });
+      return;
+    }
+    const copy = event.target.closest('button.copy');
+    if (copy) {
+      const code = copy.parentElement.querySelector('pre')?.textContent ?? '';
+      navigator.clipboard.writeText(code).then(() => {
+        copy.textContent = 'Copied';
+        setTimeout(() => (copy.textContent = 'Copy'), 1500);
+      });
+    }
+  });
   newChat.addEventListener('click', () => vscode.postMessage({ type: 'newChat' }));
   provider.addEventListener('change', () => vscode.postMessage({ type: 'selectProvider', id: provider.value }));
 
@@ -121,19 +160,21 @@
           sent.textContent = `Attached: ${message.attachments.join(', ')}`;
           user.appendChild(sent);
         }
-        answer = addMessage('assistant', '');
+        answer = addMessage('assistant markdown', '');
+        answerText = '';
         setBusy(true);
         break;
       }
       case 'cleared':
         messages.replaceChildren();
         answer = null;
+        answerText = '';
         setBusy(false);
         break;
       case 'text':
         if (answer) {
-          answer.textContent += message.text;
-          answer.scrollIntoView({ block: 'end' });
+          answerText += message.text;
+          scheduleRender();
         }
         break;
       case 'notice':
@@ -146,14 +187,16 @@
         break;
       case 'done':
         if (!busy) break;
+        finishAnswer();
         if (message.cancelled) addMessage('status', 'Cancelled.');
-        answer = null;
         setBusy(false);
         break;
       case 'error':
-        if (answer && !answer.textContent) answer.remove();
-        addMessage('error', message.message);
+        if (answer && !answerText) answer.remove();
+        else finishAnswer();
         answer = null;
+        answerText = '';
+        addMessage('error', message.message);
         setBusy(false);
         break;
     }

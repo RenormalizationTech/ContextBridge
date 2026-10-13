@@ -9,6 +9,7 @@ export type WebviewMessage =
   | { type: 'newChat' }
   | { type: 'selectProvider'; id: string }
   | { type: 'openAttachment'; id: string }
+  | { type: 'openLink'; href: string }
   | { type: 'removeAttachment'; id: string }
   | { type: 'clearAttachments' };
 

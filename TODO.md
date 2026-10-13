@@ -9,7 +9,7 @@ This is the handoff checklist for continuing development on another machine. Pro
 - [x] Document MVP goals and milestones.
 - [ ] Implement the extension. The Phase 2 scaffold exists (mock provider only).
 
-**Next task:** Phase 5 (verify and release); consider Markdown rendering of answers.
+**Next task:** Phase 5 (verify and release).
 
 ## Continue on Another Machine
 
@@ -112,18 +112,19 @@ At the end of each development session:
 
 ### Latest Handoff
 
-- **Updated:** October 12, 2026 (branch `claude-adapter`).
+- **Updated:** October 12, 2026 (branch `markdown`). Markdown rendering added after Phase 4.
 - **Implemented:** Phase 4 provider chat.
   - Claude Code adapter: stream-json in/out, read-only `--tools`, permission prompts answered over stdio (allows read tools and all `mcp__*` tools), `--resume` follow-ups.
   - Codex adapter: `exec --json` with `sandbox_mode="read-only"`, `exec resume` follow-ups.
   - CLI discovery (setting, then login-shell PATH, then common install dirs), with the login-shell PATH passed to the child processes.
   - Status line (installed / logged in), provider dropdown, New chat, tool activity lines, the attachments sent shown under each question, cancellation, and errors for a missing CLI, logged-out state and early exit.
-- **Next action:** Phase 5 (verify and release); consider Markdown rendering of answers.
+- **Next action:** Phase 5 (verify and release).
 - **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex); their side effects are a documented, accepted risk. Follow-ups resume the CLI session and re-send current attachments; switching providers starts a new chat.
-- **Open decisions:** Markdown rendering of answers (currently plain text); Codex `app-server` for token streaming.
+- **Open decisions:** Codex `app-server` for token streaming; syntax highlighting in code blocks (not done).
 - **Validation:** `npm run check` passes (typecheck, 15 unit tests, build). Live runs on the Git fixture:
   - Claude: answer from attachments, follow-up remembered context, MCP search allowed, edit/new file/commit blocked, cancel left no process.
   - Codex: answer, resumed session blocked edit/new file/commit.
   - In both cases git status and file hashes were unchanged.
   - Built extension with stubbed `vscode`: status, real Claude answer about an attached file, provider switch.
   - The owner confirmed it works in the Extension Development Host (F5).
+- **Markdown:** answers are rendered with markdown-it 14.3.2 (`html: false`, linkify), re-rendered at most once per frame while streaming. Code blocks get a Copy button. Links open via the host (http(s) in the browser, relative paths as workspace files). `npm run check` passes (18 unit tests, including HTML and `javascript:`-link escaping). The owner confirmed it in the Extension Development Host (F5).

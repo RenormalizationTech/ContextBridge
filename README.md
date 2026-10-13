@@ -25,6 +25,7 @@ ContextBridge runs the official CLIs you already have installed and logged in. I
 - **Claude Code** (`claude`): answers stream as they're written. Ask mode starts it with only read and search tools (`Read`, `Grep`, `Glob`, `WebFetch`, `WebSearch`, `Agent`, `ToolSearch`), so it has no tool that can edit files or run shell commands.
 - **Codex** (`codex`): runs `codex exec` in the read-only sandbox. Codex can run shell commands to read and search, but the sandbox blocks writes. Answers arrive as whole messages rather than streaming.
 - Follow-up questions continue the same provider conversation, and every question re-sends the current attachments. **New chat** or switching providers starts a new conversation. Conversations are saved by the CLI like any other session.
+- Answers are rendered as Markdown (raw HTML is shown as text, never rendered). Code blocks have a **Copy** button. Web links open in your browser, and relative links open workspace files.
 - Settings: `contextBridge.provider`, and `contextBridge.claude.path` / `contextBridge.codex.path` if the CLI isn't found automatically.
 
 **What Ask mode does and doesn't guarantee:** the providers' built-in file-editing, shell-write and Git tools are blocked. Your own MCP servers (Claude Code) and plugins (Codex) stay available, and they can have side effects that ContextBridge doesn't control. Examples are an MCP server that writes files or updates an external service, or a Codex computer-use plugin. Remove or disable those in the CLI's own configuration if that matters to you. See [docs/provider-feasibility.md](docs/provider-feasibility.md).
@@ -38,4 +39,4 @@ ContextBridge runs the official CLIs you already have installed and logged in. I
 - **Limits:** a file over 256 KB, content beyond 1 MB in total, or a file missing at send time is sent as a path-only reference, and the chat says so. Binary files and folders are refused.
 - Attachments set the focus of a question; they don't restrict access. The provider may still read other files in the workspace.
 
-Layout: `src/context/` (attachments and prompt assembly), `src/chat/` (webview chat view), `src/providers/` (provider adapters; currently a mock). `prototypes/` holds the Phase 1 CLI scripts.
+Layout: `src/context/` (attachments and prompt assembly), `src/chat/` (webview chat view host side), `src/webview/` (chat webview script and Markdown rendering), `src/providers/` (Claude Code, Codex and mock adapters). `prototypes/` holds the Phase 1 CLI scripts.

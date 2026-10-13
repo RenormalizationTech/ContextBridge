@@ -69,8 +69,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
     const mediaUri = vscode.Uri.joinPath(this.extensionUri, 'media');
-    view.webview.options = { enableScripts: true, localResourceRoots: [mediaUri] };
-    view.webview.html = this.renderHtml(view.webview, mediaUri);
+    const distUri = vscode.Uri.joinPath(this.extensionUri, 'dist');
+    view.webview.options = { enableScripts: true, localResourceRoots: [mediaUri, distUri] };
+    view.webview.html = this.renderHtml(view.webview, mediaUri, distUri);
     view.webview.onDidReceiveMessage((message: WebviewMessage) => this.handleMessage(message));
     view.onDidDispose(() => {
       this.pending?.abort();
@@ -99,6 +100,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case 'openAttachment':
         void this.openAttachment(message.id);
         break;
+      case 'openLink':
+        void this.openLink(message.href);
+        break;
       case 'removeAttachment':
         this.attachments.remove(message.id);
         break;
@@ -116,6 +120,26 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       status: this.statuses.get(this.providerId),
       attachments: this.attachments.summaries(),
     });
+  }
+
+  // Web links open in the browser; relative links open workspace files (optionally `#L12`).
+  private async openLink(href: string): Promise<void> {
+    if (/^https?:\/\//i.test(href)) {
+      await vscode.env.openExternal(vscode.Uri.parse(href));
+      return;
+    }
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    const match = href.match(/^([^#]+)(?:#L(\d+))?/);
+    if (!folder || !match || /^[a-z][a-z0-9+.-]*:/i.test(href)) return;
+    const line = match[2] ? Number(match[2]) - 1 : undefined;
+    try {
+      await vscode.window.showTextDocument(vscode.Uri.joinPath(folder.uri, decodeURIComponent(match[1])), {
+        selection: line === undefined ? undefined : new vscode.Range(line, 0, line, 0),
+        preview: true,
+      });
+    } catch {
+      void vscode.window.showWarningMessage(`ContextBridge: could not open ${href}.`);
+    }
   }
 
   private async openAttachment(id: string): Promise<void> {
@@ -165,9 +189,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     void this.view?.webview.postMessage(message);
   }
 
-  private renderHtml(webview: vscode.Webview, mediaUri: vscode.Uri): string {
+  private renderHtml(webview: vscode.Webview, mediaUri: vscode.Uri, distUri: vscode.Uri): string {
     const nonce = Array.from({ length: 32 }, () => Math.floor(Math.random() * 36).toString(36)).join('');
-    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'main.js'));
+    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(distUri, 'webview.js'));
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'main.css'));
     return `<!DOCTYPE html>
 <html lang="en">
