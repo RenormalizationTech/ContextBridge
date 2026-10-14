@@ -154,4 +154,5 @@ At the end of each development session:
 
 - Generated the bridge/chat logo with the built-in image generation tool; saved the 256 × 256 Marketplace PNG to `media/logo.png` and recorded the prompt in `docs/logo-prompt.txt`.
 - Added the package icon, updated the README branding, and bumped package/lockfile to 0.3.1.
-- Marketplace upload and validation pending.
+- Typecheck, all 65 tests, build and packaging passed. Marketplace accepted 0.3.1 and is verifying it.
+- Published package SHA-256: `bb20ea2ceb51e9dd784ad83e97a5f36d75d24632b30bd63fd83f8a63d81cfd2d`.

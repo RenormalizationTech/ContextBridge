@@ -43,3 +43,7 @@ Source: [Microsoft's publishing guide](https://code.visualstudio.com/api/working
 ## GitHub release
 
 The `v0.3.0` GitHub release attaches the exact VSIX accepted by Marketplace: `contextbridge-chat-0.3.0.vsix`. README and screenshot improvements made afterward are repository documentation changes; they do not replace the already published package. Future Marketplace changes require a new version and upload.
+
+## Logo update (0.3.1)
+
+Version 0.3.1 adds `media/logo.png` as the package icon and includes the current README and screenshot. All 65 tests, typecheck, build and package checks passed. The update was accepted by Marketplace and entered verification on October 14, 2026.
