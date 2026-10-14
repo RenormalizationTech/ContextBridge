@@ -9,7 +9,7 @@ This is the handoff checklist for continuing development on another machine. Pro
 - [x] Document MVP goals and milestones.
 - [x] Implement the extension: Claude Code and Codex providers, attachments, Ask/Agent modes, history (0.1.0), model and effort pickers (0.2.0), uncommitted-change review (0.2.1), Copilot CLI (0.3.0).
 
-**Next task:** Prepare the Marketplace publisher and first public release (0.3.0).
+**Next task:** Verify Marketplace installation of `renormalizationtech.contextbridge-chat` and complete the remaining installed-provider checks.
 
 ## Continue on Another Machine
 
@@ -21,7 +21,7 @@ git switch main   # or the current development branch, if one is in progress
 
 For an existing checkout, inspect `git status` and save any local work before updating it with `git pull --ff-only` on the appropriate branch. Reuse an existing development branch when continuing unfinished work.
 
-- [ ] Read `README.md`, `PROJECT_GOALS.md`, and this file.
+- [x] Read `README.md`, `PROJECT_GOALS.md`, and this file (a routine first step on any machine).
 - [x] Install Git and the development tools needed for the next task. Supported versions: Node.js 22+ (developed on 24.16), npm, VS Code 1.100+ (developed on 1.141).
 - [x] Install and authenticate the provider CLIs on the machine where they will run, using their supported account workflows.
 - [x] Record the operating system and exact CLI versions used for feasibility checks (see `docs/provider-feasibility.md`).
@@ -87,7 +87,7 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [x] Verify setup from a fresh checkout on the second development machine; document any environment limitations. (October 13, 2026: a fresh clone on the owner's MacBook Air with Node 26.11.1 built after `npm install`. Findings documented in the README: `npm install` is required before F5 or a build, and newer npm's install-scripts warning for esbuild/vsce-sign is harmless.)
 - [x] Document installation, reliance on the provider CLIs for authentication, usage, local-only support, and exact access behavior (ask-only enforced; attachments focus but do not isolate).
 - [x] Package an installable VSIX for personal use (`npm run package` → `dist/contextbridge-<version>.vsix`).
-- [ ] Choose a publisher identity, create a short demonstration, and publish to the VS Code Marketplace (next milestone).
+- [x] Choose a publisher identity, capture a real screenshot, and publish ContextBridge Chat 0.3.0 to the VS Code Marketplace.
 - [ ] Compare the workflow with the official provider extensions and collect early-user feedback.
 
 **Done when:** The packaged extension can be installed and the main workflow completed using the documentation, with no unsupported security or authentication claims.
@@ -107,10 +107,10 @@ Agent mode was added after the MVP as an optional mode (see CLAUDE.md decision 9
 
 At the end of each development session:
 
-- [ ] Mark completed items only after their completion criteria have been verified.
-- [ ] Update the next task and record blockers or decisions below.
-- [ ] Record commands/checks actually run and their results; do not imply unperformed validation passed.
-- [ ] Commit related changes and push the development branch so the next machine can retrieve them.
+- Mark completed items only after their completion criteria have been verified.
+- Update the next task and record blockers or decisions below.
+- Record commands/checks actually run and their results; do not imply unperformed validation passed.
+- Commit related changes and push the development branch so the next machine can retrieve them.
 
 ### Latest Handoff
 
@@ -120,7 +120,10 @@ At the end of each development session:
 - **Validation:** `npm run package` passed: typecheck, all 65 tests, build and 0.3.0 VSIX. Copilot's new/resumed Ask boundary passed with unchanged files and `.git`. `npm run test:copilot` passed attachments, workspace reads, resumed context, Agent Deny/Allow with previews, Agent-to-Ask restrictions, and cancellation during activity. The isolated bundle ran under VS Code's Electron runtime with a real Copilot model catalog and answer; host checks verified no Mock choice, old Mock history rejection and managed approvals under Bypass. Headless Chrome passed 11 picker/effort/approval checks. Repeat all-provider live boundary checks for the final Marketplace package.
 - **Resolved:** The missing current-file feature was an outdated VSIX, not a source bug. README explains rebuilding/reinstalling; 0.2.1 distinguishes the newer package.
 - **Decisions:** Copilot integrated after its feasibility spike; Mock removed from the picker/settings and retained for tests. Local VS Code only; Ask is default; MCP tools and user plugins keep their own capabilities. Antigravity remains deferred.
-- **Next action:** Verify Copilot and the provider picker in installed 0.3.0; choose/create the Marketplace publisher and prepare the demonstration; follow [docs/publishing.md](docs/publishing.md).
+- **Next action:** Verify installation from Marketplace under `renormalizationtech.contextbridge-chat`, then complete the remaining installed Copilot/provider checks; follow [docs/publishing.md](docs/publishing.md).
+- **Cleanup (October 14, 2026):** Removed old 0.2.0/0.2.1 VSIXs from `dist/` (only 0.3.0 remains), pruned `node_modules`, refreshed README/TODO for the three-provider state. Re-run `npm install` if dependencies are needed again.
+- **Release checks:** Rebuilt under the confirmed publisher; typecheck, 65 tests, build and all eight live boundary checks passed. Marketplace validation succeeded; installation from Marketplace under the final identity remains pending.
+- **Publisher:** Renormalization Technology (`renormalizationtech`), created by the owner and set in `package.json`. The new identity uses separate extension storage from `contextbridge-dev.contextbridge`; old history is not migrated automatically.
 - **History:** Detailed implementation and earlier validation notes are preserved in [docs/development-history.md](docs/development-history.md).
 
 ## Marketplace Release Checklist
@@ -128,10 +131,21 @@ At the end of each development session:
 - [x] Owner verifies the installed 0.2.1 extension.
 - [ ] Owner verifies Copilot (Ask/Agent, history, models, cancellation) and no Mock choice in installed 0.3.0.
 - [x] Update current project goals, README, changelog and release instructions.
-- [ ] Confirm the publisher ID and create/access that publisher in Marketplace.
-- [ ] Set `package.json` publisher to the confirmed ID and rebuild the VSIX.
-- [ ] Capture a short demo or screenshots using the installed extension.
-- [ ] Repeat `npm run test:boundary` with the release CLI versions (uses provider accounts).
-- [ ] Package, inspect and install the final VSIX under the confirmed publisher identity.
-- [ ] Publish the final VSIX and verify installation from Marketplace.
+- [x] Confirm the publisher ID and create/access that publisher in Marketplace: Renormalization Technology (`renormalizationtech`), confirmed by the owner October 14.
+- [x] Set `package.json` publisher to `renormalizationtech` and rebuild the 0.3.0 VSIX.
+- [x] Capture a real screenshot using installed 0.3.0: Codex Ask, automatic current-file context, completed answer and Git summary (`docs/images/ask-mode.png`).
+- [x] Repeat `npm run test:boundary`: Claude Code 2.1.296, Codex 0.162.1 (app-server and exec), Copilot 1.0.98; all eight new/resumed checks passed October 14, with files and `.git` unchanged.
+- [x] Package and inspect the final VSIX: `renormalizationtech.contextbridge-chat`, version 0.3.0; typecheck, 65 tests and build passed.
+- [ ] Install and verify the final VSIX under the confirmed publisher identity.
+- [x] Publish the final VSIX: Marketplace validation succeeded for 0.3.0.
+- [ ] Verify installation from Marketplace.
 - [ ] Compare the workflow with official extensions and collect early-user feedback.
+
+## Marketplace upload (October 14, 2026)
+
+- Uploaded 0.3.0 as **ContextBridge Chat** (`renormalizationtech.contextbridge-chat`); Marketplace validation succeeded and 0.3.0 is available for use.
+- Changed the package ID after Marketplace rejected `contextbridge`; changed the display name after it rejected `ContextBridge`.
+- Typecheck, 65 tests, build and VSIX packaging passed. Updated README installation and storage paths for the new identity.
+- Next: verify installation under the new identity.
+
+- **Release documentation:** Added the Marketplace identity and installation link, dated changelog, real Codex Ask screenshot, and current publication status. The exact published VSIX is preserved for the GitHub release; later README edits are repository-only until the next Marketplace version.

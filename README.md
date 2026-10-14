@@ -1,8 +1,12 @@
-# ContextBridge
+# ContextBridge Chat
 
 **Copilot-style chat for Claude Code, Codex and GitHub Copilot CLI.** Attach the files and code selections you care about, ask a question, and get an answer in the VS Code side bar. In **Ask** mode (the default), ContextBridge won't let the provider edit your files: it suggests, and you make the changes. Switch to **Agent** mode when you want the CLI's full capabilities back.
 
 ContextBridge is a thin layer over the official `claude`, `codex` and `copilot` CLIs. It uses their existing login and subscription, and has no accounts, API keys or billing of its own.
+
+![ContextBridge in VS Code: an attached source file, Ask mode, a streamed answer and the Git change summary](docs/images/ask-mode.png)
+
+*Ask mode with automatic current-file context and a completed Codex answer in the installed extension.*
 
 ## Requirements
 
@@ -11,11 +15,13 @@ ContextBridge is a thin layer over the official `claude`, `codex` and `copilot` 
   - **Claude Code:** install `claude`, then run `claude` once in a terminal to log in.
   - **Codex:** install `codex`, then run `codex login`.
   - **GitHub Copilot:** install `copilot`, then run `copilot login`. Your account must have access to Copilot CLI.
-- Tested on macOS with Claude Code 2.1.296 and Codex CLI 0.160.0, and Copilot CLI 1.0.98 (official SDK 1.0.22).
+- Tested on macOS with Claude Code 2.1.296, Codex CLI 0.162.1 and Copilot CLI 1.0.98 (official SDK 1.0.22).
 
 ## Install
 
-ContextBridge isn't on the Marketplace yet. Build and install a VSIX:
+Install [ContextBridge Chat from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=renormalizationtech.contextbridge-chat), or search for `renormalizationtech.contextbridge-chat` in VS Code's Extensions view.
+
+To build and install from source:
 
 ```sh
 npm install
@@ -32,7 +38,7 @@ npm run package
 code --install-extension dist/contextbridge-0.3.0.vsix --force
 ```
 
-F5 builds the current source for the development host; it does not update the VSIX or your installed extension. An older VSIX can therefore be missing features even when its version is still `0.2.0`. Use the freshly packaged file when reinstalling.
+F5 builds the current source for the development host; it does not update the VSIX or your installed extension. An older VSIX can therefore be missing features even when its version is unchanged. Use the freshly packaged file when reinstalling.
 
 Run `npm install` once in each fresh clone (and again after a `git pull` that changes `package.json`). Without it, building or pressing F5 fails with `Cannot find package 'esbuild'`. Newer npm versions may warn that `esbuild` and `@vscode/vsce-sign` have install scripts not yet approved. The build works without them, so you can ignore the warning, or approve them with `npm install-scripts approve <package>`.
 
@@ -72,7 +78,7 @@ Because the lists come from the CLIs, new models appear after you update the CLI
 
 Click **History** (or run **ContextBridge: Show Chat History**) to reopen a previous chat. Follow-up questions continue the same provider conversation. Use the trash icon to delete a chat, or **ContextBridge: Clear Chat History** to delete them all.
 
-- **Where:** like Copilot Chat, each chat is one JSON file in VS Code's per-workspace extension storage (on macOS, `~/Library/Application Support/Code/User/workspaceStorage/<workspace-id>/contextbridge-dev.contextbridge/chats/`). The file holds your questions, the names of the files you attached (not their contents), and the answers and activity.
+- **Where:** like Copilot Chat, each chat is one JSON file in VS Code's per-workspace extension storage (on macOS, `~/Library/Application Support/Code/User/workspaceStorage/<workspace-id>/renormalizationtech.contextbridge-chat/chats/`). The file holds your questions, the names of the files you attached (not their contents), and the answers and activity.
 - **How long:** the 50 most recent chats per workspace are kept, and older ones are deleted automatically. Change this with `contextBridge.history.maxChats`; `0` turns history off. Copilot Chat, by contrast, keeps chats until you delete them.
 - The CLIs keep their own copies of conversations and clean them up on their own schedule (Claude Code deletes sessions after 30 days by default). If you reopen a chat whose CLI conversation is gone, ContextBridge says so, and your next question starts a new conversation.
 
@@ -168,7 +174,7 @@ Layout:
 - `src/chat/`: the chat view, host side.
 - `src/webview/`: the chat webview script and Markdown rendering.
 - `src/providers/`: the Claude Code, Codex and Copilot adapters; Mock is a test fixture only.
-- `scripts/`: the live boundary check.
+- `scripts/`: the live boundary check and the Copilot feasibility/live checks.
 - `prototypes/`: the Phase 1 CLI scripts.
 
 Project docs: [PROJECT_GOALS.md](PROJECT_GOALS.md), [TODO.md](TODO.md), [CLAUDE.md](CLAUDE.md). Release notes: [CHANGELOG.md](CHANGELOG.md). Marketplace preparation: [docs/publishing.md](docs/publishing.md).

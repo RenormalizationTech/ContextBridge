@@ -1,15 +1,14 @@
 {
-  "name": "contextbridge",
-  "displayName": "ContextBridge",
+  "name": "contextbridge-chat",
+  "displayName": "ContextBridge Chat",
   "description": "Copilot-style chat for Claude Code, Codex and GitHub Copilot CLI: attach context, ask questions and review changes.",
   "version": "0.3.0",
-  "publisher": "contextbridge-dev",
+  "publisher": "renormalizationtech",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/RenormalizationTech/ContextBridge.git"
   },
-  "private": true,
   "type": "module",
   "engines": {
     "vscode": "^1.100.0"

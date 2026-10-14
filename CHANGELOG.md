@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.3.0
+## 0.3.0 — 2026-10-14
+
+- Publish to the Visual Studio Marketplace as **ContextBridge Chat**, ID `renormalizationtech.contextbridge-chat`.
 
 - Add GitHub Copilot CLI through the official SDK, reusing its login and model catalog.
 - Support streamed answers, resumed chats, model/effort selection, cancellation and Agent approval cards.

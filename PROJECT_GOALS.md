@@ -22,7 +22,7 @@ The motivation: the official Claude Code, Codex and GitHub Copilot CLI extension
 
 ## Target Users and Main Workflow
 
-The first user is the project owner, building a small personal tool. The personal-use release is verified; the next milestone is publishing to the VS Code Marketplace for other developers who want the same workflow.
+The first user is the project owner, building a small personal tool. The personal-use release is verified; version 0.3.0 is published to the VS Code Marketplace as ContextBridge Chat for other developers who want the same workflow.
 
 The main workflow is:
 
@@ -94,9 +94,9 @@ A new coding-agent runtime and a custom billing/authentication platform are outs
 
 ## Next Release Milestone
 
-- Choose and create the Marketplace publisher identity.
-- Prepare a short demonstration of attachments, Ask mode and uncommitted-change review.
-- Package and inspect the release, repeat live provider boundary checks, and publish.
+- Verify installation from Marketplace under `renormalizationtech.contextbridge-chat`.
+- Expand installed-provider UI verification beyond the recorded Codex Ask demonstration.
+- Keep the Marketplace listing and GitHub release documentation current.
 - Collect early-user feedback before expanding the feature backlog.
 
 Release steps: [docs/publishing.md](docs/publishing.md).
@@ -105,4 +105,4 @@ Release steps: [docs/publishing.md](docs/publishing.md).
 
 As of October 14, 2026, version 0.3.0 implements all three providers, file/selection and automatic current-file context, streaming, cancellation, chat history, model/effort pickers, optional Agent mode and uncommitted-change review. The owner has verified the installed extension, including the 0.2.1 summary and diff view.
 
-Version 0.3.0 passed typecheck, 65 tests and packaging. Copilot passed the live attachment/resume/approval/cancel checks and its new/resumed Ask boundary. Installed 0.3.0 owner verification is pending. Live Ask-mode boundary checks are recorded in [docs/provider-feasibility.md](docs/provider-feasibility.md); repeat them against the release environment before publication. MCP tools and user plugins retain their own access, an accepted limitation documented in the README. Product decisions are recorded in [CLAUDE.md](CLAUDE.md).
+Version 0.3.0 passed typecheck, 65 tests and packaging. Copilot passed the live attachment/resume/approval/cancel checks and its new/resumed Ask boundary. Marketplace validation succeeded for ContextBridge Chat 0.3.0. A real installed 0.3.0 Codex Ask demonstration verified automatic current-file attachment and a completed answer; the broader owner checklist remains pending. Live Ask-mode boundary checks are recorded in [docs/provider-feasibility.md](docs/provider-feasibility.md); all eight checks passed for release preparation on October 14. MCP tools and user plugins retain their own access, an accepted limitation documented in the README. Product decisions are recorded in [CLAUDE.md](CLAUDE.md).
