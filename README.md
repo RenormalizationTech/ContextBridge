@@ -19,12 +19,27 @@ ContextBridge isn't on the Marketplace yet. Build and install a VSIX:
 ```sh
 npm install
 npm run package                # writes dist/contextbridge-<version>.vsix
-code --install-extension dist/contextbridge-0.2.0.vsix
+code --install-extension dist/contextbridge-0.2.1.vsix
 ```
 
 If `code` isn't on your PATH, open the Extensions view in VS Code, choose **⋯ → Install from VSIX…**, and pick the file.
 
+To update an installed copy after source changes, rebuild and reinstall the VSIX, then run **Developer: Reload Window** in VS Code:
+
+```sh
+npm run package
+code --install-extension dist/contextbridge-0.2.1.vsix --force
+```
+
+F5 builds the current source for the development host; it does not update the VSIX or your installed extension. An older VSIX can therefore be missing features even when its version is still `0.2.0`. Use the freshly packaged file when reinstalling.
+
 Run `npm install` once in each fresh clone (and again after a `git pull` that changes `package.json`). Without it, building or pressing F5 fails with `Cannot find package 'esbuild'`. Newer npm versions may warn that `esbuild` and `@vscode/vsce-sign` have install scripts not yet approved. The build works without them, so you can ignore the warning, or approve them with `npm install-scripts approve <package>`.
+
+## Uncommitted changes
+
+When the workspace's Git repository has saved changes, a box above the conversation shows the changed-file count, additions in green, and deletions in red (for example **2 files +18 −2**). Click it to review the files together in VS Code's diff editor.
+
+The summary includes staged, unstaged, and untracked files, comparing their current contents with the last commit. It refreshes about every three seconds while the chat is visible and after saving a file. Unsaved edits appear after saving; ignored files are excluded. Binary files count toward the file total but have no line counts. The summary hides when there are no changes or no Git repository. It uses the first workspace folder's repository, and does not attach the changes to your question automatically.
 
 ## Usage
 
@@ -151,7 +166,7 @@ Layout:
 - `scripts/`: the live boundary check.
 - `prototypes/`: the Phase 1 CLI scripts.
 
-Project docs: [PROJECT_GOALS.md](PROJECT_GOALS.md), [TODO.md](TODO.md), [CLAUDE.md](CLAUDE.md).
+Project docs: [PROJECT_GOALS.md](PROJECT_GOALS.md), [TODO.md](TODO.md), [CLAUDE.md](CLAUDE.md). Release notes: [CHANGELOG.md](CHANGELOG.md). Marketplace preparation: [docs/publishing.md](docs/publishing.md).
 
 ## License
 

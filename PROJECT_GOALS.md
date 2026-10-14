@@ -22,7 +22,7 @@ The motivation: the official Claude Code and Codex extensions and CLIs operate a
 
 ## Target Users and Main Workflow
 
-The first user is the project owner, building a small personal tool. Publishing to the VS Code Marketplace for other developers who want the same Copilot-style workflow is a later goal.
+The first user is the project owner, building a small personal tool. The personal-use release is verified; the next milestone is publishing to the VS Code Marketplace for other developers who want the same workflow.
 
 The main workflow is:
 
@@ -61,7 +61,7 @@ Use TypeScript and the VS Code extension APIs for context collection and the edi
 - **Chat and UI:** Manage attachment review, messages, streaming, cancellation, and errors.
 - **Provider adapters:** Manage request transport, response events, and the ask-only restriction for each backend, relying on the CLI's own authentication.
 
-Use structured provider interfaces where available rather than scraping terminal UI output. The exact Claude Code and Codex transports remain implementation decisions until their current interfaces and permission controls are verified.
+Use structured provider interfaces where available rather than scraping terminal UI output. Claude Code uses its structured streaming/control protocol. Codex uses `app-server` by default, with `exec` as a fallback. Verified behavior and limitations are recorded in [docs/provider-feasibility.md](docs/provider-feasibility.md).
 
 ## Milestones
 
@@ -88,20 +88,21 @@ Use structured provider interfaces where available rather than scraping terminal
 
 ## Deferred Features
 
-After the MVP, consider open-tab attachments, Git diffs, diagnostics, symbols, context-size estimates, saved context sets, persistent chat history, multi-root workspaces, and additional providers.
+Consider bulk open-tab attachments, explicit Git-diff attachments, diagnostics, symbols, context-size estimates, saved context sets, multi-root workspaces, and additional providers. Persistent chat history and an uncommitted-change review view are already implemented.
 
-A new coding-agent runtime and a custom billing/authentication platform are outside the scope. An optional Agent mode was added after the MVP by owner decision (October 12, 2026). It restores each CLI's own capabilities, with Claude Code approvals shown in the chat and Codex limited to its workspace-write sandbox. Ask mode remains the default and keeps its enforced boundary.
+A new coding-agent runtime and a custom billing/authentication platform are outside the scope. An optional Agent mode was added after the MVP by owner decision (October 12, 2026). It restores each CLI's own capabilities, with approval cards for Claude Code and Codex app-server. The Codex exec fallback uses a workspace-write sandbox without approval cards. Ask mode remains the default and keeps its enforced boundary.
 
-## Open Questions
+## Next Release Milestone
 
-- Which supported interface best fits each provider, including streaming and cancellation?
-- Which provider settings reliably block file modifications while keeping read and search capabilities?
-- How should attachments be presented to the provider so it treats them as the primary focus?
-- What attachment size limits and truncation behavior should users see?
-- Should follow-up questions reuse prior messages and attachments, and how will that context remain visible?
+- Choose and create the Marketplace publisher identity.
+- Prepare a short demonstration of attachments, Ask mode and uncommitted-change review.
+- Package and inspect the release, repeat live provider boundary checks, and publish.
+- Collect early-user feedback before expanding the feature backlog.
 
-## Basis and Current Status
+Release steps: [docs/publishing.md](docs/publishing.md).
 
-This document reflects the owner's decisions as of October 12, 2026 (also recorded in [CLAUDE.md](CLAUDE.md)). The repository contains documentation only, with no extension implementation yet.
+## Current Status
 
-Provider capabilities and integration details have not been independently verified. They are research inputs for Milestone 1, not established guarantees.
+As of October 14, 2026, version 0.2.1 implements both providers, file/selection and automatic current-file context, streaming, cancellation, chat history, model/effort pickers, optional Agent mode and uncommitted-change review. The owner has verified the installed extension, including the 0.2.1 summary and diff view.
+
+Typecheck, 60 automated tests and packaging passed. Live Ask-mode boundary checks are recorded in [docs/provider-feasibility.md](docs/provider-feasibility.md); repeat them against the release environment before publication. MCP tools and user plugins retain their own access, an accepted limitation documented in the README. Product decisions are recorded in [CLAUDE.md](CLAUDE.md).

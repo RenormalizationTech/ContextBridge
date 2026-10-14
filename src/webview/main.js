@@ -5,6 +5,8 @@ import { renderMarkdown } from './markdown.ts';
 (function () {
   const vscode = acquireVsCodeApi();
   const messages = document.getElementById('messages');
+  const changes = document.getElementById('changes');
+  changes.addEventListener('click', () => vscode.postMessage({ type: 'showChanges' }));
   const attachments = document.getElementById('attachments');
   const composer = document.getElementById('composer');
   const question = document.getElementById('question');
@@ -167,6 +169,20 @@ import { renderMarkdown } from './markdown.ts';
     send.disabled = value;
     cancel.hidden = !value;
     provider.disabled = value;
+  }
+
+  function renderChanges(summary) {
+    changes.hidden = !summary?.files;
+    changes.replaceChildren();
+    if (summary?.files) {
+      changes.append(
+        element('span', '', `${summary.files} ${summary.files === 1 ? 'file' : 'files'}`),
+        element('span', 'changes-added', `+${summary.additions}`),
+        element('span', 'changes-deleted', `−${summary.deletions}`),
+        element('span', 'changes-label', 'Uncommitted changes'),
+      );
+      changes.setAttribute('aria-label', `${summary.files} changed files, ${summary.additions} additions, ${summary.deletions} deletions. Review uncommitted changes.`);
+    }
   }
 
   function renderProviders(providers, selectedId) {
@@ -425,6 +441,7 @@ import { renderMarkdown } from './markdown.ts';
         renderModels(message.models, message.model, message.effort, message.defaultEffort);
         renderStatus(message.status);
         renderAttachments(message.attachments, message.currentFile);
+        renderChanges(message.changes);
         break;
       case 'start':
         addUserTurn(message.question, message.attachments);

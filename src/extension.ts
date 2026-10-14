@@ -4,6 +4,7 @@ import { HistoryStore } from './chat/historyStore.ts';
 import { AttachmentStore } from './context/attachmentStore.ts';
 import { collectFile, collectSelections, type CollectResult } from './context/collect.ts';
 import { CurrentFileTracker } from './context/currentFile.ts';
+import { ChangesView } from './git/changesView.ts';
 import { pickFiles } from './context/picker.ts';
 import { ClaudeProvider } from './providers/claudeProvider.ts';
 import { CodexProvider, type CodexTransport, type CodexWebSearch } from './providers/codexProvider.ts';
@@ -27,6 +28,8 @@ export function activate(context: vscode.ExtensionContext): void {
   ];
   // Per-workspace storage, like VS Code's own chat history.
   const storage = context.storageUri ?? context.globalStorageUri;
+  const changes = new ChangesView();
+  context.subscriptions.push(changes);
   const currentFile = new CurrentFileTracker();
   context.subscriptions.push(currentFile);
   const chatView = new ChatViewProvider({
@@ -35,6 +38,7 @@ export function activate(context: vscode.ExtensionContext): void {
     providerId: config().get<string>('provider', 'claude'),
     mode: config().get<Mode>('mode', 'ask'),
     attachments,
+    changes,
     currentFile,
     attachCurrentFile: () => config().get<boolean>('attachCurrentFile', true),
     history: new HistoryStore(vscode.Uri.joinPath(storage, 'chats').fsPath),

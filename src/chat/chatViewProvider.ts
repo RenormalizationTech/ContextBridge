@@ -5,6 +5,7 @@ import { resolveAttachment } from '../context/collect.ts';
 import type { CurrentFileTracker } from '../context/currentFile.ts';
 import { applyLimits, buildPrompt, MAX_ATTACHMENT_BYTES } from '../context/payload.ts';
 import type { Attachment } from '../context/types.ts';
+import type { ChangesView } from '../git/changesView.ts';
 import type { Mode, ModelCatalog, PermissionLevel, PermissionRequest, Provider, ProviderStatus } from '../providers/types.ts';
 import { Conversation, isTranscriptMessage } from './conversation.ts';
 import type { HistoryStore } from './historyStore.ts';
@@ -38,6 +39,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private readonly defaultModel: (providerId: string) => ModelChoice;
   private readonly onModelSelected: (providerId: string, choice: ModelChoice) => void;
   private permissionLevel: PermissionLevel;
+  private readonly changes: ChangesView;
   private readonly currentFile: CurrentFileTracker;
   private readonly attachCurrentFile: () => boolean;
   // Per chat: × on the current-file chip turns it off until it's clicked again or a new chat starts.
@@ -55,6 +57,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     mode: Mode;
     attachments: AttachmentStore;
     // The active editor's file, attached automatically (contextBridge.attachCurrentFile).
+    changes: ChangesView;
     currentFile: CurrentFileTracker;
     attachCurrentFile: () => boolean;
     history: HistoryStore;
@@ -84,6 +87,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.onModelSelected = options.onModelSelected;
     this.conversation = new Conversation({ providerId: this.providerId, ...this.defaultModel(this.providerId) });
     this.attachments.onDidChange(() => this.postState());
+    this.changes = options.changes;
+    this.changes.onDidChange(() => this.postState());
     this.currentFile = options.currentFile;
     this.attachCurrentFile = options.attachCurrentFile;
     this.currentFileEnabled = this.attachCurrentFile();
@@ -390,6 +395,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
+    this.changes.setVisible(view.visible);
+    view.onDidChangeVisibility(() => this.changes.setVisible(view.visible));
     const mediaUri = vscode.Uri.joinPath(this.extensionUri, 'media');
     const distUri = vscode.Uri.joinPath(this.extensionUri, 'dist');
     view.webview.options = { enableScripts: true, localResourceRoots: [mediaUri, distUri] };
@@ -397,7 +404,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     view.webview.onDidReceiveMessage((message: WebviewMessage) => this.handleMessage(message));
     // A running answer keeps going while the view is hidden; it is replayed when the view returns.
     view.onDidDispose(() => {
-      if (this.view === view) this.view = undefined;
+      if (this.view === view) {
+        this.view = undefined;
+        this.changes.setVisible(false);
+      }
     });
   }
 
@@ -407,6 +417,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         if (this.statuses.has(this.providerId)) this.postState();
         else void this.refreshStatus().then(() => this.selectInstalledProvider());
         this.post({ type: 'restore', messages: this.conversation.messages });
+        break;
+      case 'showChanges':
+        void this.changes.open();
         break;
       case 'showHistory':
         void this.showHistory();
@@ -473,6 +486,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       status: this.statuses.get(this.providerId),
       attachments: this.attachments.summaries(),
       currentFile: this.currentFileState(),
+      changes: this.changes.current && {
+        files: this.changes.current.files.length,
+        additions: this.changes.current.additions,
+        deletions: this.changes.current.deletions,
+      },
     });
   }
 
@@ -686,6 +704,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     <div id="status" class="muted"></div>
     <div id="agent-banner" hidden>Agent mode: the provider can edit files and run commands.</div>
   </header>
+  <button type="button" id="changes" class="secondary" hidden title="Review all uncommitted changes"></button>
   <div id="messages" aria-live="polite"></div>
   <form id="composer">
     <div class="attachment-row">

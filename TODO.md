@@ -7,9 +7,9 @@ This is the handoff checklist for continuing development on another machine. Pro
 - [x] Choose ContextBridge as the project name.
 - [x] Define the product direction: one VS Code extension, Claude Code and Codex adapters, explicit attachments, Ask mode.
 - [x] Document MVP goals and milestones.
-- [x] Implement the extension: Claude Code and Codex providers, attachments, Ask/Agent modes, history (0.1.0), model and effort pickers (0.2.0).
+- [x] Implement the extension: Claude Code and Codex providers, attachments, Ask/Agent modes, history (0.1.0), model and effort pickers (0.2.0), uncommitted-change review (0.2.1).
 
-**Next task:** Day-to-day use of 0.2.0. Later: Marketplace publication.
+**Next task:** Prepare the Marketplace publisher and first public release (0.2.1).
 
 ## Continue on Another Machine
 
@@ -87,16 +87,17 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [x] Verify setup from a fresh checkout on the second development machine; document any environment limitations. (October 13, 2026: a fresh clone on the owner's MacBook Air with Node 26.11.1 built after `npm install`. Findings documented in the README: `npm install` is required before F5 or a build, and newer npm's install-scripts warning for esbuild/vsce-sign is harmless.)
 - [x] Document installation, reliance on the provider CLIs for authentication, usage, local-only support, and exact access behavior (ask-only enforced; attachments focus but do not isolate).
 - [x] Package an installable VSIX for personal use (`npm run package` → `dist/contextbridge-<version>.vsix`).
-- [ ] Later: choose a publisher identity, create a short demonstration, and publish to the VS Code Marketplace.
+- [ ] Choose a publisher identity, create a short demonstration, and publish to the VS Code Marketplace (next milestone).
 - [ ] Compare the workflow with the official provider extensions and collect early-user feedback.
 
 **Done when:** The packaged extension can be installed and the main workflow completed using the documentation, with no unsupported security or authentication claims.
 
 ## Later Backlog
 
-- [ ] Open-tab attachments, Git diffs, and diagnostics.
+- [ ] Bulk open-tab attachments, explicit Git-diff attachments, and diagnostics.
 - [ ] Context-size estimates and saved context sets.
-- [ ] Persistent chat history and multi-root workspaces.
+- [x] Persistent chat history (shipped in 0.1.0).
+- [ ] Multi-root workspaces.
 - [ ] Symbols/references and additional provider adapters.
 - [ ] Antigravity CLI (`agy`): **deferred** (owner decision, October 13, 2026). An Ask-only provider looked feasible with an installed read-only custom agent, but `agy` is changing too fast and has no approval protocol for Agent mode. The problems and the conditions for revisiting are in `docs/provider-feasibility.md` ("Antigravity CLI `agy`").
 
@@ -113,81 +114,23 @@ At the end of each development session:
 
 ### Latest Handoff
 
-- **Updated:** October 13, 2026 (branch `model-effort`, version 0.2.0).
-- **Implemented:**
-  - Phase 5 release prep: version 0.1.0 (Apache-2.0), `npm run package` (vsce 4.0.0), user README, fake-CLI adapter tests, and `npm run test:boundary`. The owner installed the VSIX and confirmed it works.
-  - After that, from owner requests:
-    - The chat moved to the secondary (right) side bar (`viewsContainers.secondarySidebar`).
-    - Optional Agent mode: an Ask/Agent dropdown backed by the `contextBridge.mode` setting, default `ask`. Claude Code gets full tools, with permission prompts shown as Allow/Deny cards in the chat. Codex gets the `workspace-write` sandbox. A warning banner shows in Agent mode, and switching modes keeps the conversation.
-- **Polish (October 13, branch `polish`; the owner confirmed each item in VS Code):**
-  - **+ button:** a picker of the active selection, open editors and workspace files (multi-select; skips `node_modules`, `.git`, build dirs).
-  - **Always allow:** approval cards gain a third button, scoped to the current chat (all edits / one exact command / one tool). It's never persisted, every auto-approval is shown, and it resets on New chat or when switching chats.
-  - **Syntax colors:** highlight.js 11.12 (common languages) in code blocks, with light and dark palettes keyed off VS Code's body theme class.
-  - **Checks:** 35 tests; stubbed host runs of the picker and of Always allow (edit scope auto-approves a later write, a plain Allow still asks again, New chat resets); jsdom check of cards, the + button and colored spans.
-- **Codex web search (owner request):**
-  - `contextBridge.codex.webSearch` (`live` default / `cached` / `disabled`), passed as `config.web_search` on thread start/resume (and `-c web_search=` for exec).
-  - Codex's built-in default already allowed search (config `web_search: null`), but the mode is now explicit.
-  - Activity lines show the query, which is only known on `item/completed`.
-  - Checks: live searches for both providers; `test:boundary -- codex` still passes.
-- **Agent permission level (owner request, modeled on Copilot's picker):**
-  - A Default Permissions / Bypass Approvals dropdown below the input in Agent mode, per chat, saved with history, with the new-chat default from `contextBridge.agent.defaultPermissions`.
-  - Bypass auto-approves each request with a chat notice and shows a red banner. A confirmation appears the first time, with "Don't Ask Again" stored in globalState.
-  - Checks: stubbed host run with a fake claude (cancel/enable dialog, 0 cards and 4 notices under Bypass, New chat resets, don't-ask-again, History restores the level); jsdom picker visibility.
-- **Copy answer (owner request):** a copy icon in each answer's footer copies the raw Markdown. It's also on cancelled answers that have text and on chats restored from history; checked in jsdom.
-- **Math (owner request):**
-  - KaTeX 0.18.9 through `@vscode/markdown-it-katex`, with an npm override so the plugin uses 0.18.9: the fix for GHSA-238p-pmpm-9mq7, and over two weeks old.
-  - `\(…\)` / `\[…\]` are rewritten to dollar delimiters outside code. `trust` is off, so there are no links from TeX.
-  - Only the `.woff2` fonts ship, in `dist/katex/`, and the CSP adds `font-src` for the extension's own files.
-  - Checks: 37 tests; jsdom render of streamed math through `dist/webview.js`; all 20 referenced fonts present.
-  - Fix: subscripts, accents and `\phi` showed as gaps in VS Code, because the webview CSP blocked KaTeX's inline style attributes. `style-src` now allows `'unsafe-inline'`; scripts stay nonce-only. Reproduced and confirmed with headless-Chrome screenshots under the old and new CSP.
-- **Model and effort pickers, 0.2.0 (October 13, branch `model-effort`; owner request; the owner confirmed the pickers in VS Code):**
-  - Two dropdowns below the question box, per chat and saved with history. The last pick is the default for new chats (`contextBridge.{claude,codex}.{model,effort}`, empty = the CLI's default). "Default" passes no flag, and its label shows what it currently means, e.g. "Default (Opus 5.5)" and "Default effort (medium)", following the selected model.
-  - Lists and defaults come from the CLIs, so new models need no extension update, and they reload on each New chat:
-    - Claude: the `initialize` control request (every model with its effort levels) and `get_settings` (the `applied` model and effort, honoring user and project settings). Model-specific default efforts come from `get_settings` with `--model X` when picked. Neither request sends a message or creates a session file (checked live). If they fail, the pickers stay hidden.
-    - Codex: `model/list` (paged, hidden models skipped, per-model efforts and defaults) and `config/read` (cwd-aware) for the user's configured model and effort.
-  - Passed as `--model`/`--effort` (Claude, also on `--resume`), `model` on thread start/resume plus `model`/`effort` on `turn/start` (app-server), and `-m`/`-c model_reasoning_effort=` (exec). "Other…" takes a free-text model name.
-  - Live finding: both CLIs silently accept an effort the model doesn't support. ContextBridge drops it before sending, with a chat notice, and resets the chat's effort. Switching models notifies when the effort resets. Models without effort levels (e.g. Haiku 4.5) show a disabled "No effort levels" picker.
-  - Footer: the model the CLI reports, and the effort Claude says it applied (`get_settings` sent before each question); otherwise the validated sent effort or the listed default. Efforts it can't confirm (typed-in models) are marked "(requested)".
-  - A rejected model (Claude `model_not_found`; Codex "model is not supported", whose JSON error text is now unwrapped) switches the chat to Default, clears it as the new-chat default, and says so in the chat.
-  - Checks: `npm run check` (50 tests); jsdom check of the pickers and footer against `dist/webview.js` (16 checks); stubbed-`vscode` host run (28 checks: effort resets and notices, Other… validation, remembered defaults, lazy default-effort lookup, unsupported-effort drop, unavailable-model fallback, history); headless-Chrome screenshots of the composer at 380px and 250px (labels fit, the row wraps when narrow).
-  - Live: Default labels for both CLIs; Claude opus-4-6 defaults to `high`; Haiku 4.5 reports no effort; bad models flagged on both CLIs; Claude haiku→sonnet and Codex gpt-6-luna/low→gpt-6.1-sol/high in resumed conversations; `npm run test:boundary -- claude --model haiku --effort low` and `-- codex --model gpt-6-luna --effort low` passed (new and resumed).
-- **Read-only Git for Claude's Ask mode (October 13, branch `git-tools`; owner request):**
-  - ContextBridge's own MCP server (`src/git/gitServer.ts` → `dist/git-mcp.cjs`, started with `--mcp-config` in Ask mode only, run by VS Code's Node via `ELECTRON_RUN_AS_NODE`): `git_status`, `git_diff` (unstaged, `staged`, `base` commit/branch/range, paths, stat), `git_log`, `git_show` (commit or `rev:path`). Activity lines show the git command.
-  - No Bash: with Bash available, the user's Claude allow rules would apply before ContextBridge's permission check. Arguments are validated (no leading `-`), `--no-ext-diff --no-textconv`, `GIT_OPTIONAL_LOCKS=0`, `core.fsmonitor=false`, output capped at 200 KB.
-  - Checks: `npm run check` (55 tests: argument building and rejection, activity label, end-to-end server run against a temp repo with `.git` byte-for-byte unchanged, adapter flags in Ask vs Agent); the bundled server run under VS Code's Electron; live "what did I change since my last commit?" answered by Claude (via `git diff`) and Codex (shell git), repos unchanged; `npm run test:boundary` with a new git `--output` step passed for all three transports (Claude didn't attempt it; the rejection is covered by the unit test).
-- **Current file attached automatically (October 13, branch `current-file`, on top of `git-tools`; owner request, owner chose default on and selection-replaces-file):**
-  - `CurrentFileTracker` (`src/context/currentFile.ts`) follows the active text editor (`file`/`untitled` schemes only) and its selection, debounced 150 ms. An outlined "current file" or "selection" chip; × turns it off for the chat (it stays off across file switches), and the dimmed chip turns it back on. New chats start from `contextBridge.attachCurrentFile` (default true), and changing the setting applies to the current chat.
-  - At send time: the non-empty selections (same line rules as Add Selection), else the whole file with unsaved edits. Skipped when the same file (or the same selection) is attached by hand. Listed under the question like other attachments.
-  - The prompt marks it `open-in-editor="true"`, with a preface line telling the model to use it only when the question is about it. Fix: `applyLimits` now keeps attachment fields (this mark) when it omits content.
-  - Shared `selectedLines`/`linesText` in `collect.ts` for Add Selection and the tracker.
-  - Checks: 56 tests (prompt marking, mark kept on omission); stubbed-`vscode` host run with a fake editor (17 checks: follows editors, ignores output panels, selection replaces file, × persists across files, New chat and setting, hand-attached duplicate sent once); jsdom chip rendering (8 checks); headless-Chrome screenshots (on/off chips). Live: with the file auto-attached, Claude and Codex answered "what does this function do?" from it and ignored it for an unrelated question.
-- **Antigravity CLI `agy` spike (October 13, branch `agy-feasibility`; owner request; deferred by the owner):**
-  - `agy` 1.3.4 tested in throwaway repos. A read-only custom agent (`tools:` list, installed temporarily in `~/.gemini/config/agents/` and removed afterwards) blocked edit, create, delete and commit attempts, including with `--dangerously-skip-permissions`, and answered questions.
-  - Deferred because the CLI changes fast (68 releases), the boundary needs a file in global config, denied actions end turns with empty answers, and there's no approval protocol. Details and revisit criteria are in `docs/provider-feasibility.md`. No code was added.
-- **Next action:** Use it day to day. Later: Marketplace publisher and release.
-- **Decided:** Ask mode keeps all MCP tools (Claude) and user plugins/config (Codex), a documented accepted risk. Agent mode is opt-in (CLAUDE.md decision 9).
-- **Open decisions:** Marketplace publisher identity.
-- **Validation** (test counts below are from when each item was checked; currently 50 tests):
-  - `npm run check` passed: typecheck, 27 tests and build. The tests include Agent mode: full tool set, approvals passed to the user and answered, Deny, cancelling during a pending approval, and Codex workspace-write on first questions and on resume.
-  - Live, on throwaway repos:
-    - Claude Agent mode: an Edit request reached the approval callback. When denied the file was unchanged; when allowed it was edited.
-    - Codex Agent mode: edited the workspace file, but writing to `~/` was blocked. Writing to the system temp dir is allowed by Codex's workspace-write default.
-  - `npm run test:boundary` (Ask mode) passed for both providers earlier in this session.
-  - Chat readability (owner request): labeled turns (**You** / provider name, plus an Agent badge), tool activity and approval cards grouped in the answer, and a live progress line (Thinking / current tool / Waiting for your approval / Writing, with elapsed seconds) that becomes Done / Cancelled / Stopped. Checked by replaying a conversation into the built `dist/webview.js` in jsdom.
-  - Second round of owner requests:
-    - No YOU header; questions sit in a shaded box.
-    - An animated border sweeps around the input box while busy, and holds still with reduced motion.
-    - Chats survive hiding the view: a host-side transcript is replayed into the webview, and a running answer is no longer cancelled when the view is hidden.
-    - Chat history: one JSON file per chat in per-workspace extension storage. It keeps the newest `history.maxChats` (default 50; 0 turns it off). A History quick pick reopens or deletes chats, there's a Clear Chat History command, and follow-ups resume the stored CLI conversation id.
-    - A missing Claude session gives a clear message, and the next question starts fresh.
-  - Checks for this round:
-    - 30 tests pass, including the conversation model and the history store.
-    - jsdom replay of `dist/webview.js` covered restore, the busy class and the History button.
-    - Stubbed-`vscode` host run covered hiding the view mid-answer, completing in the background and restoring, history save/list/reopen/delete, and `maxChats` 0.
-    - A live missing-session check on Claude passed.
-  - Provider check on first open (owner request): if the saved provider's CLI isn't installed, it switches once per session to an installed one (never Mock, never mid-chat) and says so. A logged-out but installed CLI is left selected. Simulated runs: only Codex → switched; neither → stayed; question already sent → stayed.
-  - Codex over `codex app-server` (owner request; `contextBridge.codex.transport`, default `app-server`, fallback `exec`):
-    - Streams answers.
-    - Agent mode is now read-only + approval `on-request`, with Allow/Deny cards (owner decision).
-    - Checks: fake app-server tests (settings, streaming, resume, approvals, interrupt); live boundary (Ask) passed in new and resumed conversations; live Agent deny/allow/follow-up; live cancel with no leftover processes.
-  - The owner installed the VSIX and confirmed these changes (the right side bar, Agent mode, chat layout, history, provider check, Codex streaming) in VS Code.
+- **Updated:** October 14, 2026 (`main`, version 0.2.1).
+- **Implemented:** Both providers, Ask/Agent modes, attachments, automatic current-file context, history, model/effort pickers, read-only Git tools, and the uncommitted-change summary with multi-file diff review.
+- **Owner verification:** The installed 0.2.1 extension looks correct; summary and diff view confirmed working.
+- **Validation:** Typecheck, 60 tests, build and VSIX packaging passed. Headless browser and stubbed VS Code checks covered the new summary and diff-opening path. Live provider boundary checks must be repeated for Marketplace publication.
+- **Resolved:** The missing current-file feature was an outdated VSIX, not a source bug. README explains rebuilding/reinstalling; 0.2.1 distinguishes the newer package.
+- **Decisions:** Local VS Code only; Ask is default; MCP tools and user plugins keep their own capabilities. Antigravity remains deferred.
+- **Next action:** Choose/create the Marketplace publisher, prepare the demonstration, and follow [docs/publishing.md](docs/publishing.md).
+- **History:** Detailed implementation and earlier validation notes are preserved in [docs/development-history.md](docs/development-history.md).
+
+## Marketplace Release Checklist
+
+- [x] Owner verifies the installed 0.2.1 extension.
+- [x] Update current project goals, README, changelog and release instructions.
+- [ ] Confirm the publisher ID and create/access that publisher in Marketplace.
+- [ ] Set `package.json` publisher to the confirmed ID and rebuild the VSIX.
+- [ ] Capture a short demo or screenshots using the installed extension.
+- [ ] Repeat `npm run test:boundary` with the release CLI versions (uses provider accounts).
+- [ ] Package, inspect and install the final VSIX under the confirmed publisher identity.
+- [ ] Publish the final VSIX and verify installation from Marketplace.
+- [ ] Compare the workflow with official extensions and collect early-user feedback.

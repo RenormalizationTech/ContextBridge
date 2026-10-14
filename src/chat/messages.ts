@@ -14,6 +14,7 @@ export type WebviewMessage =
   // '' is the CLI's default; OTHER_MODEL asks for a model name.
   | { type: 'selectModel'; model: string }
   | { type: 'selectEffort'; effort: string }
+  | { type: 'showChanges' }
   | { type: 'showHistory' }
   | { type: 'permissionResponse'; id: string; allow: boolean; always?: boolean }
   | { type: 'openAttachment'; id: string }
@@ -44,6 +45,7 @@ export type HostMessage =
       // The file open in the editor (or its selection), attached automatically unless turned off.
       // Undefined when there's none, or when that file is already attached by hand.
       currentFile?: CurrentFileState;
+      changes?: { files: number; additions: number; deletions: number };
     }
   | { type: 'cleared' }
   // Replays a saved conversation, e.g. when the view is shown again or a chat is opened from history.
