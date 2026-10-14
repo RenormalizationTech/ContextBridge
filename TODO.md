@@ -7,9 +7,9 @@ This is the handoff checklist for continuing development on another machine. Pro
 - [x] Choose ContextBridge as the project name.
 - [x] Define the product direction: one VS Code extension, Claude Code and Codex adapters, explicit attachments, Ask mode.
 - [x] Document MVP goals and milestones.
-- [x] Implement the extension: Claude Code and Codex providers, attachments, Ask/Agent modes, history (0.1.0), model and effort pickers (0.2.0), uncommitted-change review (0.2.1).
+- [x] Implement the extension: Claude Code and Codex providers, attachments, Ask/Agent modes, history (0.1.0), model and effort pickers (0.2.0), uncommitted-change review (0.2.1), Copilot CLI (0.3.0).
 
-**Next task:** Prepare the Marketplace publisher and first public release (0.2.1).
+**Next task:** Prepare the Marketplace publisher and first public release (0.3.0).
 
 ## Continue on Another Machine
 
@@ -49,10 +49,10 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [x] Create separate modules for context collection, chat state/UI, and provider adapters.
 - [x] Define shared request, attachment, streaming-event, error, and cancellation interfaces.
 - [x] Add a command to open ContextBridge and a minimal chat view.
-- [x] Add a mock provider so editor workflows can be developed without a live account.
+- [x] Add a mock provider for offline development/tests (now test-only; removed from the production picker in 0.3.0).
 - [x] Define provider executable discovery for local VS Code (done in Phase 4: login-shell PATH plus common install locations, overridable with `contextBridge.claude.path` / `contextBridge.codex.path`).
 
-**Done when:** A fresh checkout can install dependencies, build, and open ContextBridge in a VS Code Extension Development Host with a mock response.
+**Done when:** A fresh checkout can install dependencies, build, and open ContextBridge in a VS Code Extension Development Host; offline mock responses remain covered by tests.
 
 ## Phase 3 — Explicit Context
 
@@ -114,18 +114,19 @@ At the end of each development session:
 
 ### Latest Handoff
 
-- **Updated:** October 14, 2026 (`main`, version 0.2.1).
-- **Implemented:** Both providers, Ask/Agent modes, attachments, automatic current-file context, history, model/effort pickers, read-only Git tools, and the uncommitted-change summary with multi-file diff review.
-- **Owner verification:** The installed 0.2.1 extension looks correct; summary and diff view confirmed working.
-- **Validation:** Typecheck, 60 tests, build and VSIX packaging passed. Headless browser and stubbed VS Code checks covered the new summary and diff-opening path. Live provider boundary checks must be repeated for Marketplace publication.
+- **Updated:** October 14, 2026 (`main`, version 0.3.0).
+- **Implemented:** Claude Code, Codex and GitHub Copilot providers, Ask/Agent modes, attachments, automatic current-file context, history, model/effort pickers, read-only Git tools, and the uncommitted-change summary with multi-file diff review.
+- **Owner verification:** The installed 0.2.1 summary/diff view works. Copilot integration and the three-provider picker in installed 0.3.0 are pending owner verification.
+- **Validation:** `npm run package` passed: typecheck, all 65 tests, build and 0.3.0 VSIX. Copilot's new/resumed Ask boundary passed with unchanged files and `.git`. `npm run test:copilot` passed attachments, workspace reads, resumed context, Agent Deny/Allow with previews, Agent-to-Ask restrictions, and cancellation during activity. The isolated bundle ran under VS Code's Electron runtime with a real Copilot model catalog and answer; host checks verified no Mock choice, old Mock history rejection and managed approvals under Bypass. Headless Chrome passed 11 picker/effort/approval checks. Repeat all-provider live boundary checks for the final Marketplace package.
 - **Resolved:** The missing current-file feature was an outdated VSIX, not a source bug. README explains rebuilding/reinstalling; 0.2.1 distinguishes the newer package.
-- **Decisions:** Local VS Code only; Ask is default; MCP tools and user plugins keep their own capabilities. Antigravity remains deferred.
-- **Next action:** Choose/create the Marketplace publisher, prepare the demonstration, and follow [docs/publishing.md](docs/publishing.md).
+- **Decisions:** Copilot integrated after its feasibility spike; Mock removed from the picker/settings and retained for tests. Local VS Code only; Ask is default; MCP tools and user plugins keep their own capabilities. Antigravity remains deferred.
+- **Next action:** Verify Copilot and the provider picker in installed 0.3.0; choose/create the Marketplace publisher and prepare the demonstration; follow [docs/publishing.md](docs/publishing.md).
 - **History:** Detailed implementation and earlier validation notes are preserved in [docs/development-history.md](docs/development-history.md).
 
 ## Marketplace Release Checklist
 
 - [x] Owner verifies the installed 0.2.1 extension.
+- [ ] Owner verifies Copilot (Ask/Agent, history, models, cancellation) and no Mock choice in installed 0.3.0.
 - [x] Update current project goals, README, changelog and release instructions.
 - [ ] Confirm the publisher ID and create/access that publisher in Marketplace.
 - [ ] Set `package.json` publisher to the confirmed ID and rebuild the VSIX.

@@ -9,6 +9,8 @@ export type PermissionLevel = 'default' | 'bypass';
 // A tool call the provider wants the user to approve (Agent mode, Claude Code).
 export interface PermissionRequest {
   tool: string;
+  // Managed provider policy can require a human response even under Bypass/Always allow.
+  requireUser?: boolean;
   // One-line summary, e.g. the command or file path.
   detail: string;
   // Optional longer preview, e.g. the text an edit replaces and inserts.
@@ -57,6 +59,8 @@ export interface ModelCatalog {
   models: ModelOption[];
   // Effort levels offered for a typed-in model the CLI doesn't list.
   efforts: string[];
+  // No default-effort metadata yet; choose a listed model before selecting an effort.
+  defaultEffortsUnknown?: boolean;
   // What "Default" currently means: the CLI's default, after the user's own CLI config.
   defaultModel?: { label: string; efforts: string[]; effort?: string };
 }

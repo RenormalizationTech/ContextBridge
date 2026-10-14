@@ -1,8 +1,8 @@
 {
   "name": "contextbridge",
   "displayName": "ContextBridge",
-  "description": "Copilot-style Ask mode for Claude Code and Codex: attach files and selections, get answers, keep your code untouched.",
-  "version": "0.2.1",
+  "description": "Copilot-style chat for Claude Code, Codex and GitHub Copilot CLI: attach context, ask questions and review changes.",
+  "version": "0.3.0",
   "publisher": "contextbridge-dev",
   "license": "Apache-2.0",
   "repository": {
@@ -118,12 +118,12 @@
           "enum": [
             "claude",
             "codex",
-            "mock"
+            "copilot"
           ],
           "enumDescriptions": [
             "Claude Code CLI",
             "Codex CLI",
-            "Canned answers for development"
+            "GitHub Copilot CLI"
           ],
           "default": "claude",
           "description": "Provider that answers questions."
@@ -226,6 +226,21 @@
           "default": 50,
           "minimum": 0,
           "description": "How many chats to keep per workspace (oldest are deleted first). 0 turns chat history off."
+        },
+        "contextBridge.copilot.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Copilot CLI executable if it is not found automatically."
+        },
+        "contextBridge.copilot.model": {
+          "type": "string",
+          "default": "",
+          "description": "Model for new Copilot chats. Empty uses the CLI's default; the model picker updates this setting."
+        },
+        "contextBridge.copilot.effort": {
+          "type": "string",
+          "default": "",
+          "description": "Reasoning effort for new Copilot chats. Empty uses the CLI's default; only supported efforts are offered."
         }
       }
     }
@@ -237,9 +252,11 @@
     "test": "node --test \"test/**/*.test.ts\"",
     "check": "npm run typecheck && npm test && npm run build",
     "test:boundary": "node scripts/boundary-check.ts",
-    "package": "npm run check && vsce package --no-dependencies --out dist/contextbridge-$npm_package_version.vsix"
+    "package": "npm run check && vsce package --no-dependencies --out dist/contextbridge-$npm_package_version.vsix",
+    "test:copilot": "node scripts/copilot-feasibility.ts"
   },
   "devDependencies": {
+    "@github/copilot-sdk": "1.0.22",
     "@types/markdown-it": "~14.1.0",
     "@types/node": "^22.15.0",
     "@types/vscode": "~1.100.0",
@@ -263,6 +280,7 @@
     "codex",
     "chat",
     "context",
-    "git"
+    "git",
+    "copilot"
   ]
 }

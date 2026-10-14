@@ -201,7 +201,7 @@ import { renderMarkdown } from './markdown.ts';
     permissions.hidden = !agent;
     permissions.value = level;
     permissions.classList.toggle('bypass', bypass);
-    const name = providerId === 'claude' ? 'Claude Code' : providerId === 'codex' ? 'Codex' : 'The provider';
+    const name = providerId === 'claude' ? 'Claude Code' : providerId === 'codex' ? 'Codex' : providerId === 'copilot' ? 'GitHub Copilot' : 'The provider';
     agentBanner.textContent = bypass
       ? `Bypass Approvals: ${name} edits files and runs commands without asking. Each action is listed in the chat.`
       : `Agent mode: ${name} can edit files and run commands after you approve them in the chat.`;
@@ -228,7 +228,7 @@ import { renderMarkdown } from './markdown.ts';
       ? catalog.models.find((option) => option.id === selectedModel)?.efforts ?? catalog.efforts
       : catalog.defaultModel?.efforts ?? catalog.efforts;
     const noLevels = levels.length === 0 && !selectedEffort;
-    const efforts = [new Option(noLevels ? 'No effort levels' : defaultEffort ? `Default effort (${defaultEffort})` : 'Default effort', '')];
+    const efforts = [new Option(noLevels ? (!selectedModel && catalog.defaultEffortsUnknown ? 'Default effort' : 'No effort levels') : defaultEffort ? `Default effort (${defaultEffort})` : 'Default effort', '')];
     for (const level of levels) efforts.push(new Option(`Effort: ${level}`, level));
     if (selectedEffort && !levels.includes(selectedEffort)) efforts.push(new Option(`Effort: ${selectedEffort}`, selectedEffort));
     effort.replaceChildren(...efforts);

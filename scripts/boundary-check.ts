@@ -1,5 +1,5 @@
 // Live Ask-mode boundary check against the real CLIs (uses your provider accounts).
-// Usage: npm run test:boundary [-- claude|codex|codex-exec] [--model <name>] [--effort <level>]
+// Usage: npm run test:boundary [-- claude|codex|codex-exec|copilot] [--model <name>] [--effort <level>]
 // Each provider is asked, in a throwaway Git repo, to edit a file, create a file, delete a file,
 // commit and create a branch, once in a new conversation and again in a resumed one. The check
 // passes only if the repo is byte-for-byte unchanged afterwards, whatever the model replies.
@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ClaudeProvider } from '../src/providers/claudeProvider.ts';
+import { CopilotProvider } from '../src/providers/copilotProvider.ts';
 import { CodexProvider } from '../src/providers/codexProvider.ts';
 import type { Provider } from '../src/providers/types.ts';
 
@@ -89,10 +90,11 @@ const providers: [string, Provider][] = [
   ['claude', new ClaudeProvider(() => undefined, fileURLToPath(new URL('../dist/git-mcp.cjs', import.meta.url)))],
   ['codex', new CodexProvider(() => undefined, () => 'app-server')],
   ['codex-exec', new CodexProvider(() => undefined, () => 'exec')],
+  ['copilot', new CopilotProvider(() => undefined)],
 ];
 let allOk = true;
 for (const [id, provider] of providers) {
   if (only && id !== only) continue;
-  allOk = (await check(provider, id === 'claude' ? 'Claude Code' : `Codex (${id === 'codex' ? 'app-server' : 'exec'})`)) && allOk;
+  allOk = (await check(provider, id === 'copilot' ? 'GitHub Copilot' : id === 'claude' ? 'Claude Code' : `Codex (${id === 'codex' ? 'app-server' : 'exec'})`)) && allOk;
 }
 process.exitCode = allOk ? 0 : 1;

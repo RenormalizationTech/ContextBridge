@@ -11,7 +11,8 @@ const extension = {
   platform: 'node',
   format: 'cjs',
   target: 'node20',
-  external: ['vscode'],
+  // Copilot uses stdio only; its optional in-process native transport isn't shipped.
+  external: ['vscode', 'koffi'],
   sourcemap: true,
   logLevel: 'info',
 };

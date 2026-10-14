@@ -2,9 +2,9 @@
 
 ## Purpose
 
-ContextBridge is a VS Code extension that brings the convenience of GitHub Copilot Ask mode to Claude Code and Codex. Users attach the files and code selections relevant to their question with a "+" workflow, choose a provider, and receive an answer inside the editor. The provider suggests; the user makes the changes by hand.
+ContextBridge is a VS Code extension that brings the convenience of GitHub Copilot Ask mode to Claude Code, Codex and GitHub Copilot CLI. Users attach the files and code selections relevant to their question with a "+" workflow, choose a provider, and receive an answer inside the editor. The provider suggests; the user makes the changes by hand.
 
-The motivation: the official Claude Code and Codex extensions and CLIs operate at whole-project scope and tend to change a lot of code even when the user only wants suggestions. ContextBridge offers targeted context and an ask-only experience on top of the user's existing Claude Code and Codex installations.
+The motivation: the official Claude Code, Codex and GitHub Copilot CLI extensions and CLIs operate at whole-project scope and tend to change a lot of code even when the user only wants suggestions. ContextBridge offers targeted context and an ask-only experience on top of the user's existing Claude Code, Codex and GitHub Copilot CLI installations.
 
 **Product direction:** One repository, one VS Code extension, multiple provider adapters. ContextBridge is a thin layer over the official CLIs. It reuses their authentication, subscriptions, and capabilities rather than replacing them.
 
@@ -16,8 +16,8 @@ The motivation: the official Claude Code and Codex extensions and CLIs operate a
 2. **Ask-only operation:** In Ask mode the provider answers and suggests but does not modify workspace files or perform Git mutations. The user applies changes by hand.
 3. **Enforced ask-only boundary:** Instructions such as “do not edit files” are insufficient. Provider configuration (tool permissions, sandbox or permission modes) must prevent file modifications. Read-oriented capabilities such as reading and searching files remain available.
 4. **Thin wrapper, full capability:** Apart from the ask-only restriction, keep what each provider CLI offers. Do not build a new agent runtime.
-5. **Provider independence:** Context collection and the chat interface are shared. Claude Code and Codex integrations live behind separate adapters.
-6. **Delegated accounts:** Authentication, subscriptions, and billing are handled entirely by the Claude Code and Codex CLIs.
+5. **Provider independence:** Context collection and the chat interface are shared. Claude Code, Codex and GitHub Copilot CLI integrations live behind separate adapters.
+6. **Delegated accounts:** Authentication, subscriptions, and billing are handled entirely by the Claude Code, Codex and GitHub Copilot CLI CLIs.
 7. **Small, useful first release:** Prioritize a reliable question-and-answer workflow before expanding into broader context management.
 
 ## Target Users and Main Workflow
@@ -37,7 +37,7 @@ Example: Attach a numerical computation file and a selection from a helper modul
 ## Scope
 
 - **Environment:** Local VS Code only. Remote SSH, containers, and remote extension hosts are out of scope.
-- **Providers:** Both Claude Code and Codex are targeted. Start with whichever one is easier to integrate well. Shipping a single provider first is acceptable.
+- **Providers:** Claude Code, Codex and GitHub Copilot CLI are supported. Start with whichever one is easier to integrate well. Shipping a single provider first is acceptable.
 
 ## MVP Goals
 
@@ -90,7 +90,7 @@ Use structured provider interfaces where available rather than scraping terminal
 
 Consider bulk open-tab attachments, explicit Git-diff attachments, diagnostics, symbols, context-size estimates, saved context sets, multi-root workspaces, and additional providers. Persistent chat history and an uncommitted-change review view are already implemented.
 
-A new coding-agent runtime and a custom billing/authentication platform are outside the scope. An optional Agent mode was added after the MVP by owner decision (October 12, 2026). It restores each CLI's own capabilities, with approval cards for Claude Code and Codex app-server. The Codex exec fallback uses a workspace-write sandbox without approval cards. Ask mode remains the default and keeps its enforced boundary.
+A new coding-agent runtime and a custom billing/authentication platform are outside the scope. An optional Agent mode was added after the MVP by owner decision (October 12, 2026). It restores each CLI's own capabilities, with approval cards for Claude Code, Codex and GitHub Copilot CLI app-server. The Codex exec fallback uses a workspace-write sandbox without approval cards. Ask mode remains the default and keeps its enforced boundary.
 
 ## Next Release Milestone
 
@@ -103,6 +103,6 @@ Release steps: [docs/publishing.md](docs/publishing.md).
 
 ## Current Status
 
-As of October 14, 2026, version 0.2.1 implements both providers, file/selection and automatic current-file context, streaming, cancellation, chat history, model/effort pickers, optional Agent mode and uncommitted-change review. The owner has verified the installed extension, including the 0.2.1 summary and diff view.
+As of October 14, 2026, version 0.3.0 implements all three providers, file/selection and automatic current-file context, streaming, cancellation, chat history, model/effort pickers, optional Agent mode and uncommitted-change review. The owner has verified the installed extension, including the 0.2.1 summary and diff view.
 
-Typecheck, 60 automated tests and packaging passed. Live Ask-mode boundary checks are recorded in [docs/provider-feasibility.md](docs/provider-feasibility.md); repeat them against the release environment before publication. MCP tools and user plugins retain their own access, an accepted limitation documented in the README. Product decisions are recorded in [CLAUDE.md](CLAUDE.md).
+Version 0.3.0 passed typecheck, 65 tests and packaging. Copilot passed the live attachment/resume/approval/cancel checks and its new/resumed Ask boundary. Installed 0.3.0 owner verification is pending. Live Ask-mode boundary checks are recorded in [docs/provider-feasibility.md](docs/provider-feasibility.md); repeat them against the release environment before publication. MCP tools and user plugins retain their own access, an accepted limitation documented in the README. Product decisions are recorded in [CLAUDE.md](CLAUDE.md).

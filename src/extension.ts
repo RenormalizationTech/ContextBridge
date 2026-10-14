@@ -8,7 +8,7 @@ import { ChangesView } from './git/changesView.ts';
 import { pickFiles } from './context/picker.ts';
 import { ClaudeProvider } from './providers/claudeProvider.ts';
 import { CodexProvider, type CodexTransport, type CodexWebSearch } from './providers/codexProvider.ts';
-import { MockProvider } from './providers/mockProvider.ts';
+import { CopilotProvider } from './providers/copilotProvider.ts';
 import type { Mode, PermissionLevel } from './providers/types.ts';
 
 let activeChatView: ChatViewProvider | undefined;
@@ -24,7 +24,7 @@ export function activate(context: vscode.ExtensionContext): void {
       () => config().get<CodexTransport>('codex.transport', 'app-server'),
       () => config().get<CodexWebSearch>('codex.webSearch', 'live'),
     ),
-    new MockProvider(),
+    new CopilotProvider(() => stringSetting('copilot.path')),
   ];
   // Per-workspace storage, like VS Code's own chat history.
   const storage = context.storageUri ?? context.globalStorageUri;
@@ -47,10 +47,9 @@ export function activate(context: vscode.ExtensionContext): void {
     memento: context.globalState,
     onProviderSelected: (id) => void config().update('provider', id, vscode.ConfigurationTarget.Global),
     onModeSelected: (mode) => void config().update('mode', mode, vscode.ConfigurationTarget.Global),
-    // Empty settings mean the CLI's own default. Mock has no model choice.
-    defaultModel: (id) => (id === 'mock' ? {} : { model: stringSetting(`${id}.model`), effort: stringSetting(`${id}.effort`) }),
+    // Empty settings mean the CLI's own default.
+    defaultModel: (id) => ({ model: stringSetting(`${id}.model`), effort: stringSetting(`${id}.effort`) }),
     onModelSelected: (id, { model, effort }) => {
-      if (id === 'mock') return;
       void config().update(`${id}.model`, model ?? '', vscode.ConfigurationTarget.Global);
       void config().update(`${id}.effort`, effort ?? '', vscode.ConfigurationTarget.Global);
     },
@@ -103,7 +102,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (event.affectsConfiguration('contextBridge.provider')) chatView.selectProvider(config().get<string>('provider', 'claude'));
       if (event.affectsConfiguration('contextBridge.mode')) chatView.selectMode(config().get<Mode>('mode', 'ask'));
       if (event.affectsConfiguration('contextBridge.attachCurrentFile')) chatView.setCurrentFileEnabled(config().get<boolean>('attachCurrentFile', true));
-      if (event.affectsConfiguration('contextBridge.claude.path') || event.affectsConfiguration('contextBridge.codex.path')) {
+      if (event.affectsConfiguration('contextBridge.claude.path') || event.affectsConfiguration('contextBridge.codex.path') || event.affectsConfiguration('contextBridge.copilot.path')) {
         void chatView.refreshStatus();
       }
     }),

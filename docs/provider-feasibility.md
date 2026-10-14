@@ -171,6 +171,35 @@ Agent mode should wait for an approval protocol.
 
 Before building, rerun this spike on the then-current version, with the same attempts plus `--dangerously-skip-permissions`, hashing files and `.git`. Then add an `agy` target to `npm run test:boundary`. If it's built before all three hold, ship it as an experimental, off-by-default, Ask-only provider that refuses to run on an `agy` version newer than the last one the boundary check passed on.
 
+## GitHub Copilot CLI (October 14, 2026): feasibility spike, integrated
+
+**Verdict: passes the integration criteria on the tested versions.** Added in 0.3.0. Unlike `agy`, it supports per-session tool filtering and host approval callbacks, with no global custom-agent file required.
+
+**Environment:** macOS, Copilot CLI 1.0.98 and official `@github/copilot-sdk` 1.0.22. The CLI was already logged in. Tests ran in disposable Git repositories; workspace files and `.git` were hashed before/after the Ask-mode attempts. The SDK launches the existing executable over stdio with auto-update disabled; ContextBridge does not ship another CLI runtime or use the optional in-process native transport.
+
+**Interfaces and accounts.** The official SDK exposes authentication status, model/effort catalogs, token deltas, tool events, session IDs/resume, permission callbacks and cancellation. Login and billing stay with Copilot CLI. No credentials were copied into ContextBridge. MCP integrations keep their own access, matching the other providers' documented limitation.
+
+**Ask boundary.** `availableTools` restricts built-ins to file reading/search and web fetching, plus MCP integrations and ContextBridge's four checked Git tools. Built-in patches, edits, creation, shell, task/subagent and management tools are omitted. Permission callbacks reject other built-in actions. The filters are supplied again on each cold resume, including when switching from Agent to Ask.
+
+- Attached-code questions streamed correctly, and an unattached helper file could be read.
+- A resumed conversation remembered a marker from the previous question.
+- Requests to edit, create and delete files, create a branch/commit and write a diff to a file left the repository, including `.git`, unchanged in new and resumed conversations.
+- An Agent conversation cold-resumed with the Ask tool filter stayed unchanged even with an approving permission callback. This checks that the boundary comes from availability, rather than reliance on denial text.
+- Runtime tool metadata after initialization showed the filtered read/search/MCP catalog; write, shell and delegation tools were absent.
+- The shipped adapter's `npm run test:boundary -- copilot --model gpt-5.4-mini --effort low` passed for new and resumed conversations. It successfully used `git_status`, `glob` and `view`.
+
+**Agent and cancellation.** Live SDK tests showed write and shell requests reaching the permission callback. Denied writes/commands left files unchanged and produced explanations; an approved patch changed the file. The adapter maps requests into existing Allow/Always allow/Deny cards with diff previews and exact-command rules. Managed policies that require a person bypass neither the cards nor the CLI's own policy. Cancellation aborts the session and stops the owned runtime; normal SDK shutdown returned no cleanup errors.
+
+**Models/defaults.** Catalog entries provide model IDs and supported effort levels. The configured default is not available through the session API before its first prompt initializes the model. ContextBridge delegates Default to the CLI and asks users to pick a concrete model before choosing effort. The footer reads the session's reported model/effort after each turn. Invalid models, missing sessions and empty turns produce visible errors.
+
+**Packaged integration.** The isolated extension bundle ran under VS Code's Electron/Node runtime without project `node_modules` resolution: activation, the real Copilot model catalog and a real answer passed. Host checks also confirmed three real providers, rejection of old Mock chats, and managed approval cards under Bypass. Headless Chrome passed 11 provider/effort/banner/card checks. `npm run test:copilot` passed the shipped adapter's attachment, workspace-read, follow-up, Deny/Allow, Agent-to-Ask and mid-activity cancellation checks. The complete suite now has 65 passing tests. Copilot integration dependency license texts are included in `media/licenses`.
+
+**Remaining release checks.** Owner verification of 0.3.0 in installed VS Code is pending. Exact behavior of future CLI versions, enterprise managed policies and arbitrary user MCP integrations is not established by this spike. Keep the SDK pinned and repeat the live tests after CLI/SDK updates. MCP grandchild cleanup has not been exhaustively checked.
+
+**Reproduction:** `npm run test:boundary -- copilot` and `npm run test:copilot` (uses the logged-in account; the latter accepts a model ID as its first argument). Unit tests cover stream deduplication, subagent-text filtering, resume/mode settings, permission routing, cancellation, model errors/catalogs and missing sessions.
+
+Sources: [GitHub SDK documentation](https://github.com/github/copilot-sdk/blob/main/nodejs/README.md), [session persistence](https://docs.github.com/en/copilot/how-tos/copilot-sdk/features/session-persistence), [tool permissions](https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/allowing-tools), and the installed CLI's `--help` / `help permissions`. Checked October 14, 2026; live results above describe the installed versions rather than untested documentation claims.
+
 ## Not Yet Checked
 
 - Whether grandchild processes (MCP servers) outlive a cancelled Codex run. Only the direct child was checked.

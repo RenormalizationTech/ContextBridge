@@ -1,6 +1,6 @@
 # Marketplace Release
 
-The owner has verified the installed 0.2.1 extension. Publisher identity and publication are pending. The current `package.json` publisher, `contextbridge-dev`, is the development identity; its Marketplace registration has not been verified.
+The owner has verified installed 0.2.1. Copilot support in 0.3.0 is implemented; owner verification of that package is pending. Publisher identity and publication are pending. The current `package.json` publisher, `contextbridge-dev`, is the development identity; its Marketplace registration has not been verified.
 
 ## Publisher Setup
 
@@ -21,7 +21,7 @@ The extension identity is `<publisher>.contextbridge`. Changing the publisher ch
 npm run test:boundary          # real providers; uses existing accounts
 npm run package               # typecheck, tests, build, VSIX
 npx --no-install vsce ls --tree
-code --install-extension dist/contextbridge-0.2.1.vsix --force
+code --install-extension dist/contextbridge-0.3.0.vsix --force
 ```
 
 Run **Developer: Reload Window** and verify current-file context, streaming, cancellation, history, approvals, and change review. Inspect the VSIX for the correct publisher, version, bundled code, README, changelog, license and assets. Keep provider credentials and personal source files out of listing assets.

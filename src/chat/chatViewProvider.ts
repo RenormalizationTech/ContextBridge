@@ -190,7 +190,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private knownEfforts(model: string | undefined): string[] | undefined {
     const catalog = this.catalogs.get(this.providerId);
     if (!catalog) return undefined;
-    return model === undefined ? catalog.defaultModel?.efforts : catalog.models.find((option) => option.id === model)?.efforts;
+    return model === undefined ? (catalog.defaultEffortsUnknown ? [] : catalog.defaultModel?.efforts) : catalog.models.find((option) => option.id === model)?.efforts;
   }
 
   private modelLabel(model: string | undefined): string {
@@ -324,6 +324,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       void vscode.window.showWarningMessage('ContextBridge: that chat could not be loaded.');
       return;
     }
+    if (!this.providers.some(provider => provider.id === stored.providerId)) {
+      void vscode.window.showWarningMessage('ContextBridge: this chat used a provider that is no longer available. Start a new chat.');
+      return;
+    }
     this.pending?.abort();
     await this.saveNow();
     if (stored.providerId !== this.providerId && this.providers.some((provider) => provider.id === stored.providerId)) {
@@ -368,14 +372,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   // Once per session: if the saved provider's CLI isn't installed, switch to one that is, so a
-  // user with only one CLI doesn't start on a "not found" error. Mock is never chosen automatically.
+  // user with only one CLI doesn't start on a "not found" error.
   private async selectInstalledProvider(): Promise<void> {
     if (this.checkedInstalledProvider) return;
     this.checkedInstalledProvider = true;
     const current = this.provider;
     if (this.statuses.get(current.id)?.installed !== false || this.pending || !this.conversation.isEmpty) return;
     for (const candidate of this.providers) {
-      if (candidate.id === current.id || candidate.id === 'mock') continue;
+      if (candidate.id === current.id) continue;
       const status = await candidate.checkStatus();
       if (!status.installed) continue;
       // The user may have picked a provider while we were checking.
@@ -517,12 +521,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private requestPermission(request: PermissionRequest, signal: AbortSignal): Promise<boolean> {
     if (signal.aborted) return Promise.resolve(false);
     const summary = `${request.tool}${request.detail ? ` ${request.detail}` : ''}`;
-    if (this.permissionLevel === 'bypass') {
+    if (this.permissionLevel === 'bypass' && !request.requireUser) {
       this.post({ type: 'notice', text: `Approved automatically (Bypass Approvals): ${summary}` });
       return Promise.resolve(true);
     }
     const alwaysKey = request.always ? `${this.providerId}:${request.always.key}` : undefined;
-    if (alwaysKey && this.alwaysAllowed.has(alwaysKey)) {
+    if (alwaysKey && !request.requireUser && this.alwaysAllowed.has(alwaysKey)) {
       // Shown in the chat so auto-approved actions are never invisible.
       this.post({ type: 'notice', text: `Allowed automatically (always allow): ${summary}` });
       return Promise.resolve(true);

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Add GitHub Copilot CLI through the official SDK, reusing its login and model catalog.
+- Support streamed answers, resumed chats, model/effort selection, cancellation and Agent approval cards.
+- Enforce Ask mode with per-turn read/search tool filtering and the existing checked Git tools.
+- Remove Mock from the provider picker and settings; keep it as a test fixture.
+
 ## 0.2.1
 
 - Show a live summary of uncommitted changes above the chat, with green additions and red deletions.

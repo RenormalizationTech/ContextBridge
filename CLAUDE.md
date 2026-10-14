@@ -8,7 +8,7 @@ A VS Code extension that is essentially "GitHub Copilot Ask mode for Claude Code
 
 - A **"+" attach** workflow (Explorer files, editor selections) to point the model at specific targets instead of the whole project.
 - An **ask-only** mode (the default): the model answers and suggests; the user makes code changes by hand. An optional **Agent** mode restores the CLIs' full capabilities.
-- A **thin layer over the official CLIs**. It wraps Claude Code and Codex, reusing their own authentication, subscriptions, and capabilities. It is not a new agent runtime.
+- A **thin layer over the official CLIs**. It wraps Claude Code, Codex and GitHub Copilot CLI, reusing their own authentication, subscriptions, and capabilities. It is not a new agent runtime.
 
 Product details and milestones: [PROJECT_GOALS.md](PROJECT_GOALS.md). Implementation checklist and handoff notes: [TODO.md](TODO.md).
 
@@ -37,3 +37,9 @@ PROJECT_GOALS.md and TODO.md have been updated to match these. If they ever conf
 - Keep the separation between context collection, chat/UI, and provider adapters.
 - Prefer structured CLI or SDK interfaces over scraping terminal output.
 - Update TODO.md's handoff section at the end of a work session. Only mark items done after they have been verified.
+
+## Copilot Integration (October 14, 2026)
+
+Copilot CLI passed the feasibility spike and is included in 0.3.0 via official SDK 1.0.22 and the user's installed `copilot`. Ask mode filters built-ins to read/search plus checked Git tools; MCP integrations retain their own access. Reapply filters on every resumed turn. Agent permission callbacks feed the existing cards. Managed policies requiring a human response must bypass neither Bypass Approvals nor Always allow. Details and tested versions: `docs/provider-feasibility.md`.
+
+Mock is test-only; do not expose it in the production picker/settings or resume an old Mock conversation through a real provider.
