@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 — 2026-10-14
+
+- Add a teal-and-blue bridge/chat logo for the Marketplace listing and Extensions view.
+- Include the updated installation instructions and real Ask-mode screenshot in the listing README.
+
 ## 0.3.0 — 2026-10-14
 
 - Publish to the Visual Studio Marketplace as **ContextBridge Chat**, ID `renormalizationtech.contextbridge-chat`.

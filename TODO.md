@@ -114,7 +114,7 @@ At the end of each development session:
 
 ### Latest Handoff
 
-- **Updated:** October 14, 2026 (`main`, version 0.3.0).
+- **Updated:** October 14, 2026 (`main`, version 0.3.1).
 - **Implemented:** Claude Code, Codex and GitHub Copilot providers, Ask/Agent modes, attachments, automatic current-file context, history, model/effort pickers, read-only Git tools, and the uncommitted-change summary with multi-file diff review.
 - **Owner verification:** The installed 0.2.1 summary/diff view works. Copilot integration and the three-provider picker in installed 0.3.0 are pending owner verification.
 - **Validation:** `npm run package` passed: typecheck, all 65 tests, build and 0.3.0 VSIX. Copilot's new/resumed Ask boundary passed with unchanged files and `.git`. `npm run test:copilot` passed attachments, workspace reads, resumed context, Agent Deny/Allow with previews, Agent-to-Ask restrictions, and cancellation during activity. The isolated bundle ran under VS Code's Electron runtime with a real Copilot model catalog and answer; host checks verified no Mock choice, old Mock history rejection and managed approvals under Bypass. Headless Chrome passed 11 picker/effort/approval checks. Repeat all-provider live boundary checks for the final Marketplace package.
@@ -149,3 +149,9 @@ At the end of each development session:
 - Next: verify installation under the new identity.
 
 - **Release documentation:** Added the Marketplace identity and installation link, dated changelog, real Codex Ask screenshot, and current publication status. The exact published VSIX is preserved for the GitHub release; later README edits are repository-only until the next Marketplace version.
+
+## Logo update (0.3.1)
+
+- Generated the bridge/chat logo with the built-in image generation tool; saved the 256 × 256 Marketplace PNG to `media/logo.png` and recorded the prompt in `docs/logo-prompt.txt`.
+- Added the package icon, updated the README branding, and bumped package/lockfile to 0.3.1.
+- Marketplace upload and validation pending.

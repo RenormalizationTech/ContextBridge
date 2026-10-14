@@ -1,5 +1,7 @@
 # ContextBridge Chat
 
+<img src="media/logo.png" alt="ContextBridge Chat logo" width="96" height="96">
+
 **Copilot-style chat for Claude Code, Codex and GitHub Copilot CLI.** Attach the files and code selections you care about, ask a question, and get an answer in the VS Code side bar. In **Ask** mode (the default), ContextBridge won't let the provider edit your files: it suggests, and you make the changes. Switch to **Agent** mode when you want the CLI's full capabilities back.
 
 ContextBridge is a thin layer over the official `claude`, `codex` and `copilot` CLIs. It uses their existing login and subscription, and has no accounts, API keys or billing of its own.
@@ -26,7 +28,7 @@ To build and install from source:
 ```sh
 npm install
 npm run package                # writes dist/contextbridge-<version>.vsix
-code --install-extension dist/contextbridge-0.3.0.vsix
+code --install-extension dist/contextbridge-0.3.1.vsix
 ```
 
 If `code` isn't on your PATH, open the Extensions view in VS Code, choose **⋯ → Install from VSIX…**, and pick the file.
@@ -35,7 +37,7 @@ To update an installed copy after source changes, rebuild and reinstall the VSIX
 
 ```sh
 npm run package
-code --install-extension dist/contextbridge-0.3.0.vsix --force
+code --install-extension dist/contextbridge-0.3.1.vsix --force
 ```
 
 F5 builds the current source for the development host; it does not update the VSIX or your installed extension. An older VSIX can therefore be missing features even when its version is unchanged. Use the freshly packaged file when reinstalling.

@@ -1,0 +1,6 @@
+Generated with the built-in image generation tool on October 14, 2026.
+
+Prompt:
+Create one polished square app logo for ContextBridge Chat, a VS Code extension connecting code context to AI chat. A single distinctive geometric symbol fusing a simple bridge arch with a chat bubble: two strong bridge supports and a graceful connecting arch, subtle chat tail integrated into silhouette. Premium developer-tool branding, clean flat vector-like graphic, bold simple forms, generous clear negative space, optical balance, instantly recognizable at 32 pixels. Luminous turquoise and electric blue symbol against a solid very dark navy square background, minimal restrained gradient only within the symbol. Centered icon occupying 75 percent of canvas. No letters, words, typography, robot, brain, sparkle, mockup, border, shadow, texture or watermark. Output a finished 1024 by 1024 square logo asset.
+
+Marketplace asset: media/logo.png, resized to 256 × 256 PNG.
