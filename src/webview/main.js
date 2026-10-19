@@ -28,6 +28,12 @@ import { renderMarkdown } from './markdown.ts';
   let turn = null;
   let renderScheduled = false;
   let busy = false;
+  // Streaming output follows the end of the chat only while the user is already there, so
+  // scrolling up to read stays put, like Copilot Chat.
+  let followOutput = true;
+  messages.addEventListener('scroll', () => {
+    followOutput = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 40;
+  });
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -36,8 +42,10 @@ import { renderMarkdown } from './markdown.ts';
     return node;
   }
 
-  function scrollToEnd() {
-    messages.scrollTop = messages.scrollHeight;
+  // `force`: a new question or a restored chat, which always jumps to the end.
+  function scrollToEnd(force = false) {
+    if (force) followOutput = true;
+    if (followOutput) messages.scrollTop = messages.scrollHeight;
   }
 
   function header(name, badge) {
@@ -67,7 +75,7 @@ import { renderMarkdown } from './markdown.ts';
     turn = { activity, body, progress, label: 'Thinking', text: '', model: '', startedAt, timer: undefined };
     turn.timer = setInterval(updateProgress, 1000);
     updateProgress();
-    scrollToEnd();
+    scrollToEnd(true);
   }
 
   function elapsed(until = Date.now()) {
@@ -382,7 +390,16 @@ import { renderMarkdown } from './markdown.ts';
     if (!text || send.disabled) return;
     vscode.postMessage({ type: 'ask', question: text });
     question.value = '';
+    saveDraft();
   });
+
+  // VS Code rebuilds the view when it is hidden (e.g. switching to another chat in the side
+  // bar), so the unsent question is kept in the webview state and put back.
+  function saveDraft() {
+    vscode.setState({ ...vscode.getState(), draft: question.value });
+  }
+  question.value = vscode.getState()?.draft ?? '';
+  question.addEventListener('input', saveDraft);
 
   question.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
@@ -433,7 +450,7 @@ import { renderMarkdown } from './markdown.ts';
         clearConversation();
         for (const item of message.messages) handle(item);
         if (turn) scheduleRender();
-        scrollToEnd();
+        scrollToEnd(true);
         break;
       case 'state':
         renderProviders(message.providers, message.providerId);

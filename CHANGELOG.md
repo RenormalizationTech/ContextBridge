@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2 — 2026-10-19
+
+- Keep your place while scrolled up during a streaming answer; the chat follows new output only when you are at the bottom.
+- Keep unsent text in the question box when you switch to another view in the side bar and back.
+
 ## 0.3.1 — 2026-10-14
 
 - Add a teal-and-blue bridge/chat logo for the Marketplace listing and Extensions view.

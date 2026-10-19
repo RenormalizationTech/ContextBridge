@@ -114,6 +114,8 @@ At the end of each development session:
 
 ### Latest Handoff
 
+- **0.3.2 (October 19, 2026):** The chat follows streaming output only while scrolled to the bottom, and the unsent question survives the view being hidden (kept in webview state). The owner verified both in the Extension Development Host. `npm run package` built `dist/contextbridge-0.3.2.vsix`; the owner uploads it to Marketplace. Copilot's "Toggle Chat" always opens Copilot Chat, and an extension can't change that. Users can bind a key to `contextBridge.open`; a ContextBridge toggle command was offered but not built.
+
 - **Updated:** October 14, 2026 (`main`, version 0.3.1).
 - **Implemented:** Claude Code, Codex and GitHub Copilot providers, Ask/Agent modes, attachments, automatic current-file context, history, model/effort pickers, read-only Git tools, and the uncommitted-change summary with multi-file diff review.
 - **Owner verification:** The installed 0.2.1 summary/diff view works. Copilot integration and the three-provider picker in installed 0.3.0 are pending owner verification.
