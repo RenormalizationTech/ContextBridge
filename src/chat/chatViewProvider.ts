@@ -715,7 +715,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     <div id="agent-banner" hidden>Agent mode: the provider can edit files and run commands.</div>
   </header>
   <button type="button" id="changes" class="secondary" hidden title="Review all uncommitted changes"></button>
-  <div id="messages" aria-live="polite"></div>
+  <!-- Keep focus on the transcript when selecting text. Otherwise VS Code can restore
+       focus to the composer before executing Copy and discard the answer selection. -->
+  <div id="messages" tabindex="0" role="region" aria-label="Conversation" aria-live="polite"></div>
   <form id="composer">
     <div class="attachment-row">
       <button type="button" id="add-files" class="icon-button" title="Add files or the current selection" aria-label="Add files">+</button>

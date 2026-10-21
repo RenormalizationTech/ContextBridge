@@ -138,6 +138,11 @@ select {
   padding-top: 8px;
 }
 
+#messages:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
 .message {
   margin-bottom: 10px;
   white-space: pre-wrap;

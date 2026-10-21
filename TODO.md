@@ -114,6 +114,8 @@ At the end of each development session:
 
 ### Latest Handoff
 
+- **0.3.4 Copy selection (October 21, 2026):** Made the conversation focusable so VS Code keeps answer selections when copying, with a keyboard focus outline. The owner confirmed Command+C works. Package and lockfile versions are 0.3.4; changelog and README installation commands are updated. Release packaging passed typecheck, all 65 tests and build. Verified version, publisher, copy fix, focus style and changelog in `dist/contextbridge-0.3.4.vsix`. Next: install the VSIX and publish 0.3.4 when ready; publication is pending.
+
 - **0.3.2 (October 19, 2026):** The chat follows streaming output only while scrolled to the bottom, and the unsent question survives the view being hidden (kept in webview state). The owner verified both in the Extension Development Host. `npm run package` built `dist/contextbridge-0.3.2.vsix`; the owner uploaded it to Marketplace on October 19. Next: confirm installed extensions update to 0.3.2 from Marketplace.
 
 - **0.3.3 Toggle Chat (October 21, 2026):** VS Code's title-bar Toggle Chat button only toggles Copilot's Chat view, and extensions can't change it, so it is left as is (owner decision). Added `contextBridge.toggle` (closes the secondary side bar when ContextBridge is visible, otherwise focuses it), a status bar item and `⌃⌥⌘B` / `Ctrl+Alt+Shift+B`. `npm run check` passed (typecheck, tests, build). The owner verified the status bar item; the keybinding hasn't been tried live. `npm run package` built `dist/contextbridge-0.3.3.vsix`. The owner uploaded it to Marketplace and published the `v0.3.3` GitHub release with the VSIX on October 21. Next: try `⌃⌥⌘B` in the installed extension.

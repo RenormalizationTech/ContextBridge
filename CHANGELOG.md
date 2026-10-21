@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.4 — 2026-10-21
+
+- Fix copying selected answer text with Command+C / Ctrl+C by keeping focus in the conversation.
+- Add a visible focus outline when navigating to the conversation with the keyboard.
+
 ## 0.3.3 — 2026-10-21
 
 - Add **ContextBridge: Toggle Chat**, with a status bar item and `⌃⌥⌘B` (`Ctrl+Alt+Shift+B`), because VS Code's title-bar Toggle Chat button only toggles Copilot Chat.

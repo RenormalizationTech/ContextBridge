@@ -28,7 +28,7 @@ To build and install from source:
 ```sh
 npm install
 npm run package                # writes dist/contextbridge-<version>.vsix
-code --install-extension dist/contextbridge-0.3.1.vsix
+code --install-extension dist/contextbridge-0.3.4.vsix
 ```
 
 If `code` isn't on your PATH, open the Extensions view in VS Code, choose **⋯ → Install from VSIX…**, and pick the file.
@@ -37,7 +37,7 @@ To update an installed copy after source changes, rebuild and reinstall the VSIX
 
 ```sh
 npm run package
-code --install-extension dist/contextbridge-0.3.1.vsix --force
+code --install-extension dist/contextbridge-0.3.4.vsix --force
 ```
 
 F5 builds the current source for the development host; it does not update the VSIX or your installed extension. An older VSIX can therefore be missing features even when its version is unchanged. Use the freshly packaged file when reinstalling.

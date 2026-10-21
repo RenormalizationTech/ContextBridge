@@ -2,7 +2,7 @@
   "name": "contextbridge-chat",
   "displayName": "ContextBridge Chat",
   "description": "Copilot-style chat for Claude Code, Codex and GitHub Copilot CLI: attach context, ask questions and review changes.",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "publisher": "renormalizationtech",
   "license": "Apache-2.0",
   "icon": "media/logo.png",
