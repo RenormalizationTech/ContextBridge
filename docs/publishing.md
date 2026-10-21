@@ -51,3 +51,7 @@ Version 0.3.1 adds `media/logo.png` as the package icon and includes the current
 ## Scroll and draft fixes (0.3.2)
 
 Version 0.3.2 keeps the reader's place while scrolled up during a streaming answer and keeps unsent question text when the view is hidden. The owner verified both in the Extension Development Host. `npm run package` passed typecheck, all 65 tests and the build. The packaged VSIX was checked for version 0.3.2, publisher `renormalizationtech` and both fixes in the bundled webview. The owner uploaded `dist/contextbridge-0.3.2.vsix` to Marketplace on October 19, 2026. The live provider boundary checks were not repeated because the change touches only the webview script.
+
+## Toggle Chat (0.3.3)
+
+Version 0.3.3 adds **ContextBridge: Toggle Chat**, a status bar item and `⌃⌥⌘B` (`Ctrl+Alt+Shift+B`), because VS Code's title-bar Toggle Chat button only toggles Copilot Chat. The owner verified the status bar item in the Extension Development Host. `npm run package` passed typecheck, all 65 tests and the build. The live provider boundary checks were not repeated because the change doesn't touch the provider adapters.

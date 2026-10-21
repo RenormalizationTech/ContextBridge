@@ -56,6 +56,14 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   activeChatView = chatView;
 
+  const statusItem = vscode.window.createStatusBarItem('contextBridge.toggle', vscode.StatusBarAlignment.Right, 100);
+  statusItem.name = 'ContextBridge Chat';
+  statusItem.text = '$(comment-discussion) ContextBridge';
+  statusItem.tooltip = 'Toggle ContextBridge Chat';
+  statusItem.command = 'contextBridge.toggle';
+  statusItem.show();
+  context.subscriptions.push(statusItem);
+
   const addAll = (results: CollectResult[]) => {
     for (const result of results) {
       if (result.ok) attachments.add(result.attachment);
@@ -67,6 +75,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(ChatViewProvider.viewId, chatView),
     vscode.commands.registerCommand('contextBridge.open', () => chatView.reveal()),
+    vscode.commands.registerCommand('contextBridge.toggle', () => chatView.toggle()),
     // From the Explorer: (clicked, allSelected). From an editor tab: (uri). From the palette: nothing.
     vscode.commands.registerCommand('contextBridge.addFiles', async (clicked?: vscode.Uri, selected?: vscode.Uri[]) => {
       const uris = selected?.length ? selected : clicked ? [clicked] : [];

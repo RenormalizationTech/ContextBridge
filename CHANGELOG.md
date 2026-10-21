@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3 — 2026-10-21
+
+- Add **ContextBridge: Toggle Chat**, with a status bar item and `⌃⌥⌘B` (`Ctrl+Alt+Shift+B`), because VS Code's title-bar Toggle Chat button only toggles Copilot Chat.
+
 ## 0.3.2 — 2026-10-19
 
 - Keep your place while scrolled up during a streaming answer; the chat follows new output only when you are at the bottom.

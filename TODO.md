@@ -114,7 +114,9 @@ At the end of each development session:
 
 ### Latest Handoff
 
-- **0.3.2 (October 19, 2026):** The chat follows streaming output only while scrolled to the bottom, and the unsent question survives the view being hidden (kept in webview state). The owner verified both in the Extension Development Host. `npm run package` built `dist/contextbridge-0.3.2.vsix`; the owner uploaded it to Marketplace on October 19. Next: confirm installed extensions update to 0.3.2 from Marketplace. Copilot's "Toggle Chat" always opens Copilot Chat, and an extension can't change that. Users can bind a key to `contextBridge.open`; a ContextBridge toggle command was offered but not built.
+- **0.3.2 (October 19, 2026):** The chat follows streaming output only while scrolled to the bottom, and the unsent question survives the view being hidden (kept in webview state). The owner verified both in the Extension Development Host. `npm run package` built `dist/contextbridge-0.3.2.vsix`; the owner uploaded it to Marketplace on October 19. Next: confirm installed extensions update to 0.3.2 from Marketplace.
+
+- **0.3.3 Toggle Chat (October 21, 2026):** VS Code's title-bar Toggle Chat button only toggles Copilot's Chat view, and extensions can't change it, so it is left as is (owner decision). Added `contextBridge.toggle` (closes the secondary side bar when ContextBridge is visible, otherwise focuses it), a status bar item and `⌃⌥⌘B` / `Ctrl+Alt+Shift+B`. `npm run check` passed (typecheck, tests, build). The owner verified the status bar item; the keybinding hasn't been tried live. `npm run package` built `dist/contextbridge-0.3.3.vsix`. Next: the owner uploads it to Marketplace.
 
 - **Updated:** October 14, 2026 (`main`, version 0.3.1).
 - **Implemented:** Claude Code, Codex and GitHub Copilot providers, Ask/Agent modes, attachments, automatic current-file context, history, model/effort pickers, read-only Git tools, and the uncommitted-change summary with multi-file diff review.

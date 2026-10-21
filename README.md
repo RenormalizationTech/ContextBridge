@@ -52,7 +52,7 @@ The summary includes staged, unstaged, and untracked files, comparing their curr
 
 ## Usage
 
-1. Open the chat with **ContextBridge: Open**. It appears in the secondary (right) side bar, next to Copilot Chat if you use it. Use **View → Appearance → Secondary Side Bar** if it's hidden.
+1. Open the chat with **ContextBridge: Open**. It appears in the secondary (right) side bar, next to Copilot Chat if you use it. To open or close it, click **ContextBridge** in the status bar, press `⌃⌥⌘B` (`Ctrl+Alt+Shift+B` on Windows/Linux), or run **ContextBridge: Toggle Chat**.
 2. Pick **Claude Code**, **Codex**, or **GitHub Copilot**, and **Ask** or **Agent**, from the dropdowns. The line underneath shows whether the CLI was found and is logged in.
 3. Attach context:
    - **Current file (automatic):** like Copilot, the file open in the editor is attached to each question. It appears as an outlined chip marked **current file**, which follows you as you switch files. Select text to send only the selection (the chip then says **selection**). Click **×** to leave it out of the current chat, and click the dimmed chip to bring it back. New chats start with it on; turn that off with `contextBridge.attachCurrentFile`. Only real files count: not settings, output panels or diff views. The model is told it was attached automatically, so questions about something else aren't steered toward it.
@@ -154,6 +154,7 @@ Conversations are saved by each CLI like any other session (for example, they ap
 - **Only one CLI installed:** that's fine. If the selected provider isn't installed when the chat first opens, ContextBridge switches to one that is and tells you.
 - **"CLI not found":** ContextBridge looks in your login shell's PATH and the usual install locations (`~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin`, ...). If yours is elsewhere, set the path setting above (run `which claude` in a terminal to find it).
 - **"Not logged in":** run `claude`, `codex login`, or `copilot login` in a terminal, then switch providers in the dropdown to refresh the status.
+- **The title bar's Toggle Chat button opens Copilot Chat:** that button belongs to VS Code's built-in Chat (used by Copilot), and extensions can't change it. Use the **ContextBridge** status bar item or `⌃⌥⌘B` instead. To hide the button, set `"chat.commandCenter.enabled": false`.
 - **An MCP server fails to start:** ContextBridge passes your login shell's PATH to the CLI. Check that the server works when you run `claude` from a terminal.
 
 ## Development

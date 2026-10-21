@@ -397,6 +397,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     else void vscode.commands.executeCommand(`${ChatViewProvider.viewId}.focus`);
   }
 
+  // VS Code's own Toggle Chat button only knows Copilot's Chat view, so this is ContextBridge's equivalent.
+  toggle(): void {
+    if (this.view?.visible) void vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
+    else void vscode.commands.executeCommand(`${ChatViewProvider.viewId}.focus`);
+  }
+
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
     this.changes.setVisible(view.visible);
