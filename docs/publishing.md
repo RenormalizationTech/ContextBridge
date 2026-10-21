@@ -54,4 +54,4 @@ Version 0.3.2 keeps the reader's place while scrolled up during a streaming answ
 
 ## Toggle Chat (0.3.3)
 
-Version 0.3.3 adds **ContextBridge: Toggle Chat**, a status bar item and `⌃⌥⌘B` (`Ctrl+Alt+Shift+B`), because VS Code's title-bar Toggle Chat button only toggles Copilot Chat. The owner verified the status bar item in the Extension Development Host. `npm run package` passed typecheck, all 65 tests and the build. The live provider boundary checks were not repeated because the change doesn't touch the provider adapters.
+Version 0.3.3 adds **ContextBridge: Toggle Chat**, a status bar item and `⌃⌥⌘B` (`Ctrl+Alt+Shift+B`), because VS Code's title-bar Toggle Chat button only toggles Copilot Chat. The owner verified the status bar item in the Extension Development Host. `npm run package` passed typecheck, all 65 tests and the build. The live provider boundary checks were not repeated because the change doesn't touch the provider adapters. The owner uploaded `dist/contextbridge-0.3.3.vsix` to Marketplace and published the `v0.3.3` GitHub release with the same VSIX on October 21, 2026.
