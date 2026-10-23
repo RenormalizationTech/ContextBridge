@@ -124,6 +124,7 @@ select {
 
 .sent {
   margin-top: 4px;
+  overflow-wrap: anywhere;
   font-size: 0.85em;
   color: var(--vscode-descriptionForeground);
 }
@@ -304,6 +305,7 @@ select {
 
 #attachments {
   flex: 1;
+  min-width: 0;
   min-height: 22px;
   align-items: center;
   display: flex;
@@ -359,10 +361,34 @@ button.link {
   cursor: pointer;
 }
 
+/* Long paths shrink instead of overflowing: flex items need min-width 0 to go below their text width. */
 .chip-label {
+  display: inline-flex;
+  align-items: baseline;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.chip-name {
+  display: flex;
+  min-width: 0;
+}
+
+/* The folders give way first; the file name is cut only once they're gone. */
+.chip-dir,
+.chip-base {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.chip-dir {
+  flex-shrink: 1000;
+}
+
+.chip-tag,
+.chip-remove {
+  flex: none;
 }
 
 .chip button:hover,

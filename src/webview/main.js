@@ -304,6 +304,15 @@ import { renderMarkdown } from './markdown.ts';
     status.className = value && !value.ok ? 'error' : 'muted';
   }
 
+  // An attachment's path, split so a long one loses its folders first and keeps the file name.
+  function chipName(path) {
+    const name = element('span', 'chip-name');
+    const cut = path.lastIndexOf('/') + 1;
+    if (cut > 0) name.appendChild(element('span', 'chip-dir', path.slice(0, cut)));
+    name.appendChild(element('span', 'chip-base', path.slice(cut)));
+    return name;
+  }
+
   // The file open in the editor, attached automatically. × leaves it out of this chat; the dimmed
   // chip puts it back.
   function currentFileChip(current) {
@@ -312,22 +321,23 @@ import { renderMarkdown } from './markdown.ts';
     const kind = ranges ? 'selection' : 'current file';
     const chip = element('span', `chip current${current.enabled ? '' : ' off'}${current.note && current.enabled ? ' warning' : ''}`);
     if (!current.enabled) {
-      const add = element('button', 'chip-label', `+ ${name}`);
+      const add = element('button', 'chip-label', '+ ');
       add.type = 'button';
-      add.title = `Attach the ${kind} open in the editor`;
-      add.appendChild(element('span', 'chip-tag', kind));
+      add.title = `${name}\nAttach the ${kind} open in the editor`;
+      add.append(chipName(name), element('span', 'chip-tag', kind));
       add.addEventListener('click', () => vscode.postMessage({ type: 'setCurrentFile', enabled: true }));
       chip.appendChild(add);
       return chip;
     }
-    const label = element('span', 'chip-label', name);
+    const label = element('span', 'chip-label');
     label.title = [
+      name,
       ranges
         ? 'Your selection in the editor, attached automatically (read when you send)'
         : 'The file open in the editor, attached automatically (read when you send). Select text to send only that part.',
       current.note,
     ].filter(Boolean).join('\n');
-    label.appendChild(element('span', 'chip-tag', kind));
+    label.append(chipName(name), element('span', 'chip-tag', kind));
     const remove = element('button', 'chip-remove', '×');
     remove.type = 'button';
     remove.title = 'Leave the current file out of this chat';
@@ -355,8 +365,10 @@ import { renderMarkdown } from './markdown.ts';
       const label = document.createElement('button');
       label.type = 'button';
       label.className = 'chip-label';
-      label.textContent = item.range ? `${item.path}:${item.range.start}-${item.range.end}` : item.path;
+      const name = item.range ? `${item.path}:${item.range.start}-${item.range.end}` : item.path;
+      label.appendChild(chipName(name));
       label.title = [
+        name,
         item.kind === 'selection'
           ? 'Selection: snapshot taken when attached'
           : 'File: current content is read when you send',
@@ -370,7 +382,7 @@ import { renderMarkdown } from './markdown.ts';
       remove.className = 'chip-remove';
       remove.textContent = '×';
       remove.title = 'Remove';
-      remove.setAttribute('aria-label', `Remove ${label.textContent}`);
+      remove.setAttribute('aria-label', `Remove ${name}`);
       remove.addEventListener('click', () => vscode.postMessage({ type: 'removeAttachment', id: item.id }));
 
       chip.append(label, remove);

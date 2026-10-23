@@ -114,6 +114,8 @@ At the end of each development session:
 
 ### Latest Handoff
 
+- **Long attachment names (October 23, 2026, unreleased):** Attachment chips now truncate long paths with an ellipsis instead of overflowing the composer. Folders are cut first, then the file name, and the full path is in the tooltip. Sent-attachment lines in the conversation now wrap long paths. Passed `npm run check` (typecheck, 65 tests, build), and a headless Chrome render of the chip markup against `media/main.css` showed correct truncation. The owner confirmed it looks right. It will ship with the next version along with other changes; not committed or versioned yet.
+
 - **0.3.4 Copy selection (October 21, 2026):** Made the conversation focusable so VS Code keeps answer selections when copying, with a keyboard focus outline. The owner confirmed Command+C works. Package and lockfile versions are 0.3.4; changelog and README installation commands are updated. Release packaging passed typecheck, all 65 tests and build. Verified version, publisher, copy fix, focus style and changelog in `dist/contextbridge-0.3.4.vsix`. Next: install the VSIX and publish 0.3.4 when ready; publication is pending.
 
 - **0.3.2 (October 19, 2026):** The chat follows streaming output only while scrolled to the bottom, and the unsent question survives the view being hidden (kept in webview state). The owner verified both in the Extension Development Host. `npm run package` built `dist/contextbridge-0.3.2.vsix`; the owner uploaded it to Marketplace on October 19. Next: confirm installed extensions update to 0.3.2 from Marketplace.
