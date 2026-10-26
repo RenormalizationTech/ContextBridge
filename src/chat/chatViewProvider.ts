@@ -9,6 +9,7 @@ import type { ChangesView } from '../git/changesView.ts';
 import type { Mode, ModelCatalog, PermissionLevel, PermissionRequest, Provider, ProviderStatus } from '../providers/types.ts';
 import { Conversation, isTranscriptMessage } from './conversation.ts';
 import type { HistoryStore } from './historyStore.ts';
+import { resolveFileLink } from './links.ts';
 import { OTHER_MODEL, type CurrentFileState, type HostMessage, type TranscriptMessage, type WebviewMessage } from './messages.ts';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
@@ -556,18 +557,18 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     pending.resolve(allow);
   }
 
-  // Web links open in the browser; relative links open workspace files (optionally `#L12`).
+  // Web links open in the browser; file links (relative or absolute, optionally with a line) open in the editor.
   private async openLink(href: string): Promise<void> {
     if (/^https?:\/\//i.test(href)) {
       await vscode.env.openExternal(vscode.Uri.parse(href));
       return;
     }
     const folder = vscode.workspace.workspaceFolders?.[0];
-    const match = href.match(/^([^#]+)(?:#L(\d+))?/);
-    if (!folder || !match || /^[a-z][a-z0-9+.-]*:/i.test(href)) return;
-    const line = match[2] ? Number(match[2]) - 1 : undefined;
+    const target = folder ? resolveFileLink(href, folder.uri.fsPath) : undefined;
+    if (!target) return;
+    const { line } = target;
     try {
-      await vscode.window.showTextDocument(vscode.Uri.joinPath(folder.uri, decodeURIComponent(match[1])), {
+      await vscode.window.showTextDocument(vscode.Uri.file(target.path), {
         selection: line === undefined ? undefined : new vscode.Range(line, 0, line, 0),
         preview: true,
       });
