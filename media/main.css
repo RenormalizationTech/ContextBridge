@@ -188,13 +188,21 @@ select {
   word-wrap: break-word;
 }
 
-/* A gray fill derived from the theme's text color, so it stands out in light and dark themes. */
+/* Each new question opens a new exchange, so give it more room than the turns inside one. */
+.turn.user:not(:first-child) {
+  margin-top: 24px;
+}
+
+/* A right-aligned bubble tinted with the theme's accent: a gray fill read like the answers' code blocks. */
 .turn.user .turn-body {
+  width: fit-content;
+  max-width: 85%;
+  margin-left: auto;
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: 8px 8px 2px 8px;
   white-space: pre-wrap;
-  background: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--vscode-foreground) 14%, transparent);
+  background: color-mix(in srgb, var(--vscode-button-background) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vscode-button-background) 45%, transparent);
 }
 
 .turn.assistant {

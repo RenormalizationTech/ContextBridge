@@ -2,7 +2,7 @@
   "name": "contextbridge-chat",
   "displayName": "ContextBridge Chat",
   "description": "Copilot-style chat for Claude Code, Codex and GitHub Copilot CLI: attach context, ask questions and review changes.",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "publisher": "renormalizationtech",
   "license": "Apache-2.0",
   "icon": "media/logo.png",
@@ -80,7 +80,7 @@
       },
       {
         "command": "contextBridge.pickFiles",
-        "title": "Add Files to Context\u2026",
+        "title": "Add Files to Context…",
         "category": "ContextBridge"
       }
     ],
@@ -173,7 +173,7 @@
         "contextBridge.attachCurrentFile": {
           "type": "boolean",
           "default": true,
-          "description": "Attach the file open in the editor to each question, like Copilot's current-file context. With text selected, the selection is sent instead of the whole file. Click \u00d7 on its chip to turn it off for one chat."
+          "description": "Attach the file open in the editor to each question, like Copilot's current-file context. With text selected, the selection is sent instead of the whole file. Click × on its chip to turn it off for one chat."
         },
         "contextBridge.claude.path": {
           "type": "string",

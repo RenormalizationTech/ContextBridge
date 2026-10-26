@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.5 — 2026-10-26
+
+- Make your questions stand out from answers: they now appear as right-aligned bubbles tinted with the theme's accent color, with extra space before each new question.
+- Shorten long attachment names with an ellipsis instead of overflowing the question box, dropping folders before the file name; the full path stays in the tooltip.
+- Wrap long attached paths in the conversation.
+
 ## 0.3.4 — 2026-10-21
 
 - Fix copying selected answer text with Command+C / Ctrl+C by keeping focus in the conversation.

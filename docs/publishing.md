@@ -55,3 +55,11 @@ Version 0.3.2 keeps the reader's place while scrolled up during a streaming answ
 ## Toggle Chat (0.3.3)
 
 Version 0.3.3 adds **ContextBridge: Toggle Chat**, a status bar item and `⌃⌥⌘B` (`Ctrl+Alt+Shift+B`), because VS Code's title-bar Toggle Chat button only toggles Copilot Chat. The owner verified the status bar item in the Extension Development Host. `npm run package` passed typecheck, all 65 tests and the build. The live provider boundary checks were not repeated because the change doesn't touch the provider adapters. The owner uploaded `dist/contextbridge-0.3.3.vsix` to Marketplace and published the `v0.3.3` GitHub release with the same VSIX on October 21, 2026.
+
+## Copy selection (0.3.4)
+
+Version 0.3.4 keeps focus in the conversation so Command+C / Ctrl+C copies selected answer text, and adds a keyboard focus outline. The owner confirmed copying works. Marketplace lists 0.3.4 as published on October 21, 2026. No `v0.3.4` Git tag or GitHub release was created.
+
+## Distinct questions and long attachment names (0.3.5)
+
+Version 0.3.5 shows the user's questions as right-aligned, accent-tinted bubbles, and shortens long attachment chip names (folders first, then the file name). Both are webview-only changes, and the owner confirmed both look right. `npm run package` passed typecheck, all 65 tests and the build. The live provider boundary checks were not repeated because the change doesn't touch the provider adapters. Next: the owner uploads `dist/contextbridge-0.3.5.vsix` to Marketplace.
