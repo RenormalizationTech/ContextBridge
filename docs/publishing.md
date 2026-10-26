@@ -62,4 +62,4 @@ Version 0.3.4 keeps focus in the conversation so Command+C / Ctrl+C copies selec
 
 ## Distinct questions and long attachment names (0.3.5)
 
-Version 0.3.5 shows the user's questions as right-aligned, accent-tinted bubbles, and shortens long attachment chip names (folders first, then the file name). Both are webview-only changes, and the owner confirmed both look right. `npm run package` passed typecheck, all 65 tests and the build. The live provider boundary checks were not repeated because the change doesn't touch the provider adapters. Next: the owner uploads `dist/contextbridge-0.3.5.vsix` to Marketplace.
+Version 0.3.5 shows the user's questions as right-aligned, accent-tinted bubbles, and shortens long attachment chip names (folders first, then the file name). Both are webview-only changes, and the owner confirmed both look right. `npm run package` passed typecheck, all 65 tests and the build. The live provider boundary checks were not repeated because the change doesn't touch the provider adapters. The owner uploaded `dist/contextbridge-0.3.5.vsix` to Marketplace on October 26, 2026, and the `v0.3.5` GitHub release attaches the same VSIX.
