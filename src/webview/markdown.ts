@@ -30,8 +30,12 @@ const renderFence = md.renderer.rules.fence!;
 md.renderer.rules.fence = (tokens, index, options, env, self) =>
   `<div class="code-block"><button type="button" class="copy" title="Copy code">Copy</button>${renderFence(tokens, index, options, env, self)}</div>`;
 
+// data-vscode-context lets right-click show "Copy Link Address" (a webview/context menu item)
+// with this link's href; VS Code merges it with the context of enclosing elements.
 md.renderer.rules.link_open = (tokens, index, options, _env, self) => {
-  tokens[index].attrSet('title', tokens[index].attrGet('href') ?? '');
+  const href = tokens[index].attrGet('href') ?? '';
+  tokens[index].attrSet('title', href);
+  tokens[index].attrSet('data-vscode-context', JSON.stringify({ webviewSection: 'link', href }));
   return self.renderToken(tokens, index, options);
 };
 

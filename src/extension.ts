@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
-import { ChatViewProvider } from './chat/chatViewProvider.ts';
+import { ChatViewProvider, type ModelChoice } from './chat/chatViewProvider.ts';
 import { HistoryStore } from './chat/historyStore.ts';
+import { linkAddress } from './chat/links.ts';
 import { AttachmentStore } from './context/attachmentStore.ts';
 import { collectFile, collectSelections, type CollectResult } from './context/collect.ts';
 import { CurrentFileTracker } from './context/currentFile.ts';
@@ -32,11 +33,14 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(changes);
   const currentFile = new CurrentFileTracker();
   context.subscriptions.push(currentFile);
+  // The pickers' choices are remembered per workspace, like the chat history, and never written to
+  // settings: other windows aren't affected. The settings are defaults where nothing was picked.
+  const picks = context.workspaceState;
   const chatView = new ChatViewProvider({
     extensionUri: context.extensionUri,
     providers,
-    providerId: config().get<string>('provider', 'claude'),
-    mode: config().get<Mode>('mode', 'ask'),
+    providerId: picks.get<string>('provider') ?? config().get<string>('provider', 'claude'),
+    mode: picks.get<Mode>('mode') ?? config().get<Mode>('mode', 'ask'),
     attachments,
     changes,
     currentFile,
@@ -45,14 +49,12 @@ export function activate(context: vscode.ExtensionContext): void {
     maxChats: () => config().get<number>('history.maxChats', 50),
     defaultPermissionLevel: () => config().get<PermissionLevel>('agent.defaultPermissions', 'default'),
     memento: context.globalState,
-    onProviderSelected: (id) => void config().update('provider', id, vscode.ConfigurationTarget.Global),
-    onModeSelected: (mode) => void config().update('mode', mode, vscode.ConfigurationTarget.Global),
-    // Empty settings mean the CLI's own default.
-    defaultModel: (id) => ({ model: stringSetting(`${id}.model`), effort: stringSetting(`${id}.effort`) }),
-    onModelSelected: (id, { model, effort }) => {
-      void config().update(`${id}.model`, model ?? '', vscode.ConfigurationTarget.Global);
-      void config().update(`${id}.effort`, effort ?? '', vscode.ConfigurationTarget.Global);
-    },
+    onProviderSelected: (id) => void picks.update('provider', id),
+    onModeSelected: (mode) => void picks.update('mode', mode),
+    // A pick of the CLI's default model/effort is stored with those fields absent; empty settings
+    // also mean the CLI's own default.
+    defaultModel: (id) => picks.get<ModelChoice>(`model.${id}`) ?? { model: stringSetting(`${id}.model`), effort: stringSetting(`${id}.effort`) },
+    onModelSelected: (id, choice) => void picks.update(`model.${id}`, choice),
   });
   activeChatView = chatView;
 
@@ -107,9 +109,20 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('contextBridge.newChat', () => chatView.newChat()),
     vscode.commands.registerCommand('contextBridge.showHistory', () => chatView.showHistory()),
     vscode.commands.registerCommand('contextBridge.clearHistory', () => chatView.clearHistory()),
+    // From the chat's right-click menu, with the link's data-vscode-context.
+    vscode.commands.registerCommand('contextBridge.copyLinkAddress', async (context?: { href?: string }) => {
+      if (!context?.href) return;
+      await vscode.env.clipboard.writeText(linkAddress(context.href, vscode.workspace.workspaceFolders?.[0]?.uri.fsPath));
+    }),
     vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration('contextBridge.provider')) chatView.selectProvider(config().get<string>('provider', 'claude'));
-      if (event.affectsConfiguration('contextBridge.mode')) chatView.selectMode(config().get<Mode>('mode', 'ask'));
+      // Only settings edits get here (the pickers don't write settings). A new default applies
+      // where this workspace hasn't picked its own, and isn't saved as a pick.
+      if (event.affectsConfiguration('contextBridge.provider') && picks.get('provider') === undefined) {
+        chatView.selectProvider(config().get<string>('provider', 'claude'), { remember: false });
+      }
+      if (event.affectsConfiguration('contextBridge.mode') && picks.get('mode') === undefined) {
+        chatView.selectMode(config().get<Mode>('mode', 'ask'), { remember: false });
+      }
       if (event.affectsConfiguration('contextBridge.attachCurrentFile')) chatView.setCurrentFileEnabled(config().get<boolean>('attachCurrentFile', true));
       if (event.affectsConfiguration('contextBridge.claude.path') || event.affectsConfiguration('contextBridge.codex.path') || event.affectsConfiguration('contextBridge.copilot.path')) {
         void chatView.refreshStatus();

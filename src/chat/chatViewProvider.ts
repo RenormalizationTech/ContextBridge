@@ -100,22 +100,23 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     return this.providers.find((provider) => provider.id === this.providerId) ?? this.providers[0];
   }
 
-  // Switching providers starts a new conversation; attachments are kept.
-  selectProvider(id: string): void {
+  // Switching providers starts a new conversation; attachments are kept. A choice is remembered
+  // for this workspace unless it only follows the settings default (remember: false).
+  selectProvider(id: string, { remember = true } = {}): void {
     if (id === this.providerId || !this.providers.some((provider) => provider.id === id)) return;
     this.pending?.abort();
     this.providerId = id;
-    this.onProviderSelected(id);
+    if (remember) this.onProviderSelected(id);
     // refreshStatus loads the new provider's models.
     this.newChat({ reloadModels: false });
     void this.refreshStatus();
   }
 
   // Switching modes keeps the conversation; the next question runs with the new mode's permissions.
-  selectMode(mode: Mode): void {
+  selectMode(mode: Mode, { remember = true } = {}): void {
     if (mode === this.mode || (mode !== 'ask' && mode !== 'agent')) return;
     this.mode = mode;
-    this.onModeSelected(mode);
+    if (remember) this.onModeSelected(mode);
     this.postState();
   }
 
@@ -386,7 +387,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       // The user may have picked a provider while we were checking.
       if (this.provider !== current || this.pending || !this.conversation.isEmpty) return;
       this.statuses.set(candidate.id, status);
-      this.selectProvider(candidate.id);
+      // Not the user's pick, so it isn't remembered: a later window checks again.
+      this.selectProvider(candidate.id, { remember: false });
       void vscode.window.showInformationMessage(`ContextBridge: ${current.label} isn't installed, so it switched to ${candidate.label}.`);
       return;
     }

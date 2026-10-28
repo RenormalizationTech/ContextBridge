@@ -22,7 +22,17 @@ test('never renders raw HTML or script links', () => {
   assert.doesNotMatch(html, /<script|<img/);
   assert.match(html, /&lt;script&gt;/);
   assert.doesNotMatch(html, /href="javascript:/);
-  assert.match(html, /<a href="https:\/\/example\.com" title="https:\/\/example\.com">y<\/a>/);
+  assert.match(html, /<a href="https:\/\/example\.com" title="https:\/\/example\.com" data-vscode-context="[^"]*">y<\/a>/);
+});
+
+test('gives links a right-click context with their href', () => {
+  const html = renderMarkdown('[a](src/a.ts#L3) and https://example.com/?q=1&r=2');
+  const contexts = [...html.matchAll(/data-vscode-context="([^"]*)"/g)].map(([, value]) =>
+    JSON.parse(value.replaceAll('&quot;', '"').replaceAll('&amp;', '&')));
+  assert.deepEqual(contexts, [
+    { webviewSection: 'link', href: 'src/a.ts#L3' },
+    { webviewSection: 'link', href: 'https://example.com/?q=1&r=2' },
+  ]);
 });
 
 test('colors code blocks that name a known language, safely', () => {

@@ -424,7 +424,10 @@ import { renderMarkdown } from './markdown.ts';
   messages.addEventListener('click', (event) => {
     const link = event.target.closest('a[href]');
     if (link) {
+      // VS Code's own webview click handler ignores preventDefault and would open the link a
+      // second time (with its "open external website?" prompt), so keep the click from reaching it.
       event.preventDefault();
+      event.stopPropagation();
       vscode.postMessage({ type: 'openLink', href: link.getAttribute('href') });
       return;
     }

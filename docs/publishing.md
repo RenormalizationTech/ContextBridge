@@ -63,3 +63,7 @@ Version 0.3.4 keeps focus in the conversation so Command+C / Ctrl+C copies selec
 ## Distinct questions and long attachment names (0.3.5)
 
 Version 0.3.5 shows the user's questions as right-aligned, accent-tinted bubbles, and shortens long attachment chip names (folders first, then the file name). Both are webview-only changes, and the owner confirmed both look right. `npm run package` passed typecheck, all 65 tests and the build. The live provider boundary checks were not repeated because the change doesn't touch the provider adapters. The owner uploaded `dist/contextbridge-0.3.5.vsix` to Marketplace on October 26, 2026, and the `v0.3.5` GitHub release attaches the same VSIX.
+
+## Per-workspace picks and link fixes (0.3.6)
+
+Version 0.3.6 stops the chat pickers from writing user settings. Provider, mode, model and effort choices are remembered per workspace, so using ContextBridge in one window no longer clears the chat or changes the mode in another; the settings become defaults for workspaces without a pick. It also stops web links from opening twice and adds **Copy Link Address** to links' right-click menu. The owner verified both in the Extension Development Host. `npm run package` passed typecheck, all 71 tests and the build. The live provider boundary checks were not repeated because the provider adapters are unchanged; Ask mode's enforcement is the same, and only where the selected mode is stored changed.

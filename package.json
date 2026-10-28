@@ -2,7 +2,7 @@
   "name": "contextbridge-chat",
   "displayName": "ContextBridge Chat",
   "description": "Copilot-style chat for Claude Code, Codex and GitHub Copilot CLI: attach context, ask questions and review changes.",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "publisher": "renormalizationtech",
   "license": "Apache-2.0",
   "icon": "media/logo.png",
@@ -82,6 +82,10 @@
         "command": "contextBridge.pickFiles",
         "title": "Add Files to Context…",
         "category": "ContextBridge"
+      },
+      {
+        "command": "contextBridge.copyLinkAddress",
+        "title": "Copy Link Address"
       }
     ],
     "menus": {
@@ -104,7 +108,18 @@
           "group": "contextBridge@1"
         }
       ],
+      "webview/context": [
+        {
+          "command": "contextBridge.copyLinkAddress",
+          "when": "webviewId == 'contextBridge.chat' && webviewSection == 'link'",
+          "group": "contextBridge@1"
+        }
+      ],
       "commandPalette": [
+        {
+          "command": "contextBridge.copyLinkAddress",
+          "when": "false"
+        },
         {
           "command": "contextBridge.addFiles",
           "when": "activeEditor"
@@ -138,7 +153,7 @@
             "GitHub Copilot CLI"
           ],
           "default": "claude",
-          "description": "Provider that answers questions."
+          "description": "Provider that answers questions in workspaces where you haven't picked one in the chat. Once you pick in the chat, that choice is remembered for the workspace and takes precedence."
         },
         "contextBridge.mode": {
           "type": "string",
@@ -151,7 +166,7 @@
             "Full provider capabilities. Claude Code asks in the chat before edits and commands; Codex can edit files and run commands inside the workspace."
           ],
           "default": "ask",
-          "description": "Whether the provider may change your files."
+          "description": "Whether the provider may change your files, in workspaces where you haven't picked a mode in the chat. Once you pick in the chat, that choice is remembered for the workspace and takes precedence."
         },
         "contextBridge.agent.defaultPermissions": {
           "type": "string",
@@ -183,12 +198,12 @@
         "contextBridge.claude.model": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Claude Code model for new chats: an alias such as `opus` or `sonnet` (the latest model of that family), or a full model name. Empty uses Claude Code's own default. The model picker below the question box changes it."
+          "markdownDescription": "Claude Code model for new chats: an alias such as `opus` or `sonnet` (the latest model of that family), or a full model name. Empty uses Claude Code's own default. The model picker's choice is remembered per workspace and takes precedence."
         },
         "contextBridge.claude.effort": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Claude Code effort level for new chats (`low`, `medium`, `high`, `xhigh`, `max`). Empty uses Claude Code's own default. The effort picker below the question box changes it."
+          "markdownDescription": "Claude Code effort level for new chats (`low`, `medium`, `high`, `xhigh`, `max`). Empty uses Claude Code's own default. The effort picker's choice is remembered per workspace and takes precedence."
         },
         "contextBridge.codex.path": {
           "type": "string",
@@ -198,12 +213,12 @@
         "contextBridge.codex.model": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Codex model for new chats, as listed in the model picker. Empty uses Codex's own default (your Codex config). The model picker below the question box changes it."
+          "markdownDescription": "Codex model for new chats, as listed in the model picker. Empty uses Codex's own default (your Codex config). The model picker's choice is remembered per workspace and takes precedence."
         },
         "contextBridge.codex.effort": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Codex reasoning effort for new chats, such as `low`, `medium` or `high` (the picker shows what each model supports). Empty uses Codex's own default. The effort picker below the question box changes it."
+          "markdownDescription": "Codex reasoning effort for new chats, such as `low`, `medium` or `high` (the picker shows what each model supports). Empty uses Codex's own default. The effort picker's choice is remembered per workspace and takes precedence."
         },
         "contextBridge.codex.transport": {
           "type": "string",
@@ -247,12 +262,12 @@
         "contextBridge.copilot.model": {
           "type": "string",
           "default": "",
-          "description": "Model for new Copilot chats. Empty uses the CLI's default; the model picker updates this setting."
+          "description": "Model for new Copilot chats. Empty uses the CLI's default. The model picker's choice is remembered per workspace and takes precedence."
         },
         "contextBridge.copilot.effort": {
           "type": "string",
           "default": "",
-          "description": "Reasoning effort for new Copilot chats. Empty uses the CLI's default; only supported efforts are offered."
+          "description": "Reasoning effort for new Copilot chats. Empty uses the CLI's default; only supported efforts are offered. The effort picker's choice is remembered per workspace and takes precedence."
         }
       }
     }

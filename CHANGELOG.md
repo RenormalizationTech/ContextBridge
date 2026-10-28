@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.6 — 2026-10-28
+
+- Keep each VS Code window's chat when you use ContextBridge in another window. Before, the pickers saved your choices as user settings, so switching the provider in one window cleared the chat in every other window, and switching between Ask and Agent changed the mode everywhere.
+- Remember the provider, mode, model and effort you pick for each workspace, without changing your settings. The `contextBridge.provider`, `contextBridge.mode`, `*.model` and `*.effort` settings are now defaults for workspaces where you haven't picked. Values written by earlier versions stay in your settings as defaults; remove them if you don't want them.
+- Fix web links in answers opening twice (once directly and once through VS Code's "open external website?" prompt).
+- Add **Copy Link Address** to the right-click menu on links in answers. File links are copied as an absolute path, with the line when the link names one.
+
 ## 0.3.5 — 2026-10-26
 
 - Make your questions stand out from answers: they now appear as right-aligned bubbles tinted with the theme's accent color, with extra space before each new question.

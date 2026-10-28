@@ -25,3 +25,11 @@ export function resolveFileLink(href: string, workspaceRoot: string): LinkTarget
     line: line ? Math.max(Number(line) - 1, 0) : undefined,
   };
 }
+
+// What "Copy Link Address" copies: file links as an absolute path (with `:line` when the link
+// names one), anything else (web links, other schemes, or no workspace) as written.
+export function linkAddress(href: string, workspaceRoot: string | undefined): string {
+  const target = workspaceRoot ? resolveFileLink(href, workspaceRoot) : undefined;
+  if (!target) return href;
+  return target.line === undefined ? target.path : `${target.path}:${target.line + 1}`;
+}

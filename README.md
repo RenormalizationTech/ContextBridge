@@ -28,7 +28,7 @@ To build and install from source:
 ```sh
 npm install
 npm run package                # writes dist/contextbridge-<version>.vsix
-code --install-extension dist/contextbridge-0.3.5.vsix
+code --install-extension dist/contextbridge-0.3.6.vsix
 ```
 
 If `code` isn't on your PATH, open the Extensions view in VS Code, choose **⋯ → Install from VSIX…**, and pick the file.
@@ -37,7 +37,7 @@ To update an installed copy after source changes, rebuild and reinstall the VSIX
 
 ```sh
 npm run package
-code --install-extension dist/contextbridge-0.3.5.vsix --force
+code --install-extension dist/contextbridge-0.3.6.vsix --force
 ```
 
 F5 builds the current source for the development host; it does not update the VSIX or your installed extension. An older VSIX can therefore be missing features even when its version is unchanged. Use the freshly packaged file when reinstalling.
@@ -74,7 +74,7 @@ Two dropdowns below the question box pick the model and reasoning effort for the
 - **Unsupported efforts are never sent silently.** Claude Code and Codex can quietly ignore an effort the model doesn't support, so ContextBridge leaves it out and says so in the chat ("GPT-6-Luna doesn't support "ultra" effort, so it uses its default effort (medium)"). Switching to a model that lacks the chosen effort resets it to Default, with a notice. This can only come up for an effort from settings or history, since the picker doesn't offer unsupported levels.
 - **The footer shows what answered:** the model as the CLI reports it (for example `claude-sonnet-5-5`) and its effort. For Claude Code this is the effort it actually applied. An effort ContextBridge couldn't confirm, such as one sent with a typed-in model, is marked **(requested)**.
 
-Because the lists come from the CLIs, new models appear after you update the CLI, with no ContextBridge update. The lists and defaults are re-read for each new chat. Each chat remembers its choice (also when reopened from History), and the last one you picked becomes the default for new chats with that provider (`contextBridge.claude.model`, `contextBridge.claude.effort`, `contextBridge.codex.model`, `contextBridge.codex.effort`, `contextBridge.copilot.model`, `contextBridge.copilot.effort`). Changing the model mid-chat applies from the next question and keeps the conversation. If the CLI rejects a model (retired, misspelled, or not on your plan), the chat says so and switches to the default model. The model and effort don't affect what Ask mode allows.
+Because the lists come from the CLIs, new models appear after you update the CLI, with no ContextBridge update. The lists and defaults are re-read for each new chat. Each chat remembers its choice (also when reopened from History), and the last one you picked becomes the default for new chats with that provider in this workspace. Workspaces where you haven't picked one use the settings (`contextBridge.claude.model`, `contextBridge.claude.effort`, `contextBridge.codex.model`, `contextBridge.codex.effort`, `contextBridge.copilot.model`, `contextBridge.copilot.effort`). Changing the model mid-chat applies from the next question and keeps the conversation. If the CLI rejects a model (retired, misspelled, or not on your plan), the chat says so and switches to the default model. The model and effort don't affect what Ask mode allows.
 
 ### Chat history
 
@@ -94,7 +94,7 @@ Click **History** (or run **ContextBridge: Show Chat History**) to reopen a prev
 
 ## Ask and Agent modes
 
-Switch with the **Ask / Agent** dropdown, or the `contextBridge.mode` setting. Switching keeps the conversation going; the next question runs with the new mode's permissions.
+Switch with the **Ask / Agent** dropdown, or the `contextBridge.mode` setting. Switching keeps the conversation going; the next question runs with the new mode's permissions. The mode you pick is remembered for the workspace and doesn't affect other projects or windows.
 
 | | Ask (default) | Agent |
 | --- | --- | --- |
@@ -136,12 +136,14 @@ Conversations are saved by each CLI like any other session (for example, they ap
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `contextBridge.provider` | `claude` | `claude`, `codex`, or `copilot` |
-| `contextBridge.mode` | `ask` | `ask` or `agent` |
+| `contextBridge.provider` | `claude` | `claude`, `codex`, or `copilot`. Default for workspaces where you haven't picked one in the chat |
+| `contextBridge.mode` | `ask` | `ask` or `agent`. Default for workspaces where you haven't picked one in the chat |
 | `contextBridge.attachCurrentFile` | `true` | Attach the file open in the editor (or its selection) to each question |
 | `contextBridge.agent.defaultPermissions` | `default` | Agent-mode level for new chats: `default` (Default Permissions) or `bypass` (Bypass Approvals) |
-| `contextBridge.claude.model`, `contextBridge.codex.model`, `contextBridge.copilot.model` | empty | Model for new chats (empty: the CLI's default). Set by the model picker |
-| `contextBridge.claude.effort`, `contextBridge.codex.effort`, `contextBridge.copilot.effort` | empty | Effort for new chats (empty: the CLI's default). Set by the effort picker |
+| `contextBridge.claude.model`, `contextBridge.codex.model`, `contextBridge.copilot.model` | empty | Model for new chats (empty: the CLI's default) in workspaces where you haven't picked one |
+| `contextBridge.claude.effort`, `contextBridge.codex.effort`, `contextBridge.copilot.effort` | empty | Effort for new chats (empty: the CLI's default) in workspaces where you haven't picked one |
+
+The pickers in the chat never change these settings. Their choices (provider, mode, and model and effort for each provider) are remembered per workspace, so each project and VS Code window keeps its own. A setting applies where nothing has been picked yet, and changing it updates open windows that are still following it.
 | `contextBridge.history.maxChats` | `50` | Chats kept per workspace; `0` turns history off |
 | `contextBridge.claude.path` | empty | Path to `claude` if it isn't found automatically |
 | `contextBridge.codex.path` | empty | Path to `codex` if it isn't found automatically |

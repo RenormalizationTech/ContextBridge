@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { resolveFileLink } from '../src/chat/links.ts';
+import { linkAddress, resolveFileLink } from '../src/chat/links.ts';
 
 const root = '/Users/me/Project';
 
@@ -24,4 +24,13 @@ test('reads the line from #L and :line suffixes', () => {
 test('ignores links with a scheme', () => {
   assert.equal(resolveFileLink('command:workbench.action.quit', root), undefined);
   assert.equal(resolveFileLink('mailto:a@b.c', root), undefined);
+});
+
+test('link addresses: file links become absolute paths, others stay as written', () => {
+  assert.equal(linkAddress('src/a%20b.ts', root), '/Users/me/Project/src/a b.ts');
+  assert.equal(linkAddress('src/a.ts#L12-L20', root), '/Users/me/Project/src/a.ts:12');
+  assert.equal(linkAddress('/Users/me/Project/src/a.ts:7:3', root), '/Users/me/Project/src/a.ts:7');
+  assert.equal(linkAddress('https://example.com/a?b=1', root), 'https://example.com/a?b=1');
+  assert.equal(linkAddress('mailto:a@b.c', root), 'mailto:a@b.c');
+  assert.equal(linkAddress('src/a.ts', undefined), 'src/a.ts');
 });
