@@ -1,4 +1,4 @@
-import type { PermissionLevel } from '../providers/types.ts';
+import type { Mode, ModeSession, PermissionLevel } from '../providers/types.ts';
 import type { TranscriptMessage } from './messages.ts';
 
 // A chat as saved to disk: the transcript plus the CLI conversation to resume.
@@ -9,6 +9,8 @@ export interface StoredConversation {
   providerId: string;
   // Claude session / Codex thread id, so follow-ups continue the same CLI conversation.
   providerConversationId?: string;
+  // Only populated for providers that bind permissions to a mode at session creation.
+  providerModeSessions?: Partial<Record<Mode, ModeSession>>;
   // Agent-mode permission level chosen for this chat.
   permissionLevel?: PermissionLevel;
   // Model and effort chosen for this chat; absent means the CLI's default.
@@ -30,6 +32,7 @@ export class Conversation {
   readonly createdAt: number;
   providerId: string;
   providerConversationId?: string;
+  readonly providerModeSessions: Partial<Record<Mode, ModeSession>> = {};
   permissionLevel?: PermissionLevel;
   model?: string;
   effort?: string;
@@ -43,6 +46,9 @@ export class Conversation {
       this.updatedAt = init.updatedAt;
       this.providerId = init.providerId;
       this.providerConversationId = init.providerConversationId;
+      const { ask, agent } = init.providerModeSessions ?? {};
+      if (typeof ask?.id === 'string' && ask.id && ask.id !== agent?.id) this.providerModeSessions.ask = ask;
+      if (typeof agent?.id === 'string' && agent.id) this.providerModeSessions.agent = agent;
       this.permissionLevel = init.permissionLevel;
       this.model = init.model;
       this.effort = init.effort;
@@ -93,6 +99,7 @@ export class Conversation {
       title: this.title,
       providerId: this.providerId,
       providerConversationId: this.providerConversationId,
+      providerModeSessions: Object.keys(this.providerModeSessions).length ? { ...this.providerModeSessions } : undefined,
       permissionLevel: this.permissionLevel,
       model: this.model,
       effort: this.effort,

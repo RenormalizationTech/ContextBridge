@@ -177,6 +177,7 @@ import { renderMarkdown } from './markdown.ts';
     send.disabled = value;
     cancel.hidden = !value;
     provider.disabled = value;
+    mode.disabled = value && provider.value === 'agy';
   }
 
   function renderChanges(summary) {
@@ -209,10 +210,12 @@ import { renderMarkdown } from './markdown.ts';
     permissions.hidden = !agent;
     permissions.value = level;
     permissions.classList.toggle('bypass', bypass);
-    const name = providerId === 'claude' ? 'Claude Code' : providerId === 'codex' ? 'Codex' : providerId === 'copilot' ? 'GitHub Copilot' : 'The provider';
+    const name = provider.selectedOptions[0]?.text || 'The provider';
     agentBanner.textContent = bypass
       ? `Bypass Approvals: ${name} edits files and runs commands without asking. Each action is listed in the chat.`
-      : `Agent mode: ${name} can edit files and run commands after you approve them in the chat.`;
+      : providerId === 'agy'
+        ? 'Agent mode: Antigravity uses its CLI permission rules. Actions requiring approval appear in this chat.'
+        : `Agent mode: ${name} can edit files and run commands after you approve them in the chat.`;
     question.placeholder = value === 'agent'
       ? 'Ask or tell the agent what to do (Enter to send, Shift+Enter for a new line)'
       : 'Ask about your code (Enter to send, Shift+Enter for a new line)';
@@ -232,8 +235,9 @@ import { renderMarkdown } from './markdown.ts';
     model.replaceChildren(...models);
     model.value = selectedModel || '';
 
+    const chosen = catalog.models.find((option) => option.id === selectedModel);
     const levels = selectedModel
-      ? catalog.models.find((option) => option.id === selectedModel)?.efforts ?? catalog.efforts
+      ? (chosen?.effortsUnknown ? catalog.efforts : chosen?.efforts ?? catalog.efforts)
       : catalog.defaultModel?.efforts ?? catalog.efforts;
     const noLevels = levels.length === 0 && !selectedEffort;
     const efforts = [new Option(noLevels ? (!selectedModel && catalog.defaultEffortsUnknown ? 'Default effort' : 'No effort levels') : defaultEffort ? `Default effort (${defaultEffort})` : 'Default effort', '')];

@@ -76,3 +76,13 @@ test('a chat keeps its model and effort through save and load', () => {
   assert.ok(isTranscriptMessage({ type: 'model' }), 'the model line is replayed with the chat');
   assert.equal(new Conversation({ providerId: 'claude' }).model, undefined);
 });
+
+test('Antigravity saves mode sessions beside one transcript and drops conflicting Ask IDs', () => {
+  const saved = new Conversation({ providerId: 'agy' });
+  saved.append(start('Remember this'));
+  saved.providerModeSessions.ask = { id: 'read-only' };
+  saved.providerModeSessions.agent = { id: 'writable' };
+  const stored = saved.toJSON();
+  assert.deepEqual(new Conversation(stored).providerModeSessions, { ask: { id: 'read-only' }, agent: { id: 'writable' } });
+  assert.deepEqual(new Conversation({ ...stored, providerModeSessions: { ask: { id: 'same' }, agent: { id: 'same' } } }).providerModeSessions, { agent: { id: 'same' } });
+});

@@ -23,7 +23,7 @@ The extension identity is `<publisher>.contextbridge-chat`. Changing the publish
 npm run test:boundary          # real providers; uses existing accounts
 npm run package               # typecheck, tests, build, VSIX
 npx --no-install vsce ls --tree
-code --install-extension dist/contextbridge-0.3.0.vsix --force
+code --install-extension dist/contextbridge-0.4.0.vsix --force
 ```
 
 Run **Developer: Reload Window** and verify current-file context, streaming, cancellation, history, approvals, and change review. Inspect the VSIX for the correct publisher, version, bundled code, README, changelog, license and assets. Keep provider credentials and personal source files out of listing assets.
@@ -67,3 +67,7 @@ Version 0.3.5 shows the user's questions as right-aligned, accent-tinted bubbles
 ## Per-workspace picks and link fixes (0.3.6)
 
 Version 0.3.6 stops the chat pickers from writing user settings. Provider, mode, model and effort choices are remembered per workspace, so using ContextBridge in one window no longer clears the chat or changes the mode in another; the settings become defaults for workspaces without a pick. It also stops web links from opening twice and adds **Copy Link Address** to links' right-click menu. The owner verified both in the Extension Development Host. `npm run package` passed typecheck, all 71 tests and the build. The live provider boundary checks were not repeated because the provider adapters are unchanged; Ask mode's enforcement is the same, and only where the selected mode is stored changed. The owner uploaded `dist/contextbridge-0.3.6.vsix` to Marketplace on October 28, 2026, and the `v0.3.6` GitHub release attaches the same VSIX.
+
+## Antigravity CLI (0.4.0)
+
+The owner manually tested the new Antigravity provider in VS Code. On November 19, 2026, typecheck, all 75 tests, the build and packaging passed. All ten live Ask checks across Claude Code, both Codex transports, GitHub Copilot and Antigravity finished with workspace files and `.git` unchanged. The VSIX was inspected and installed as `renormalizationtech.contextbridge-chat@0.4.0` in an isolated VS Code profile. The upload package is `dist/contextbridge-0.4.0.vsix` and its SHA-256 is `070898c3bef1328a679442a9b976d9a8332fc58395db7f5bcbbee5a2565aa88a`. The Marketplace upload is pending.

@@ -10,6 +10,7 @@ import { pickFiles } from './context/picker.ts';
 import { ClaudeProvider } from './providers/claudeProvider.ts';
 import { CodexProvider, type CodexTransport, type CodexWebSearch } from './providers/codexProvider.ts';
 import { CopilotProvider } from './providers/copilotProvider.ts';
+import { AgyProvider } from './providers/agyProvider.ts';
 import type { Mode, PermissionLevel } from './providers/types.ts';
 
 let activeChatView: ChatViewProvider | undefined;
@@ -26,6 +27,7 @@ export function activate(context: vscode.ExtensionContext): void {
       () => config().get<CodexWebSearch>('codex.webSearch', 'live'),
     ),
     new CopilotProvider(() => stringSetting('copilot.path')),
+    new AgyProvider(() => stringSetting('agy.path')),
   ];
   // Per-workspace storage, like VS Code's own chat history.
   const storage = context.storageUri ?? context.globalStorageUri;
@@ -124,7 +126,7 @@ export function activate(context: vscode.ExtensionContext): void {
         chatView.selectMode(config().get<Mode>('mode', 'ask'), { remember: false });
       }
       if (event.affectsConfiguration('contextBridge.attachCurrentFile')) chatView.setCurrentFileEnabled(config().get<boolean>('attachCurrentFile', true));
-      if (event.affectsConfiguration('contextBridge.claude.path') || event.affectsConfiguration('contextBridge.codex.path') || event.affectsConfiguration('contextBridge.copilot.path')) {
+      if (providers.some(({ id }) => event.affectsConfiguration(`contextBridge.${id}.path`))) {
         void chatView.refreshStatus();
       }
     }),

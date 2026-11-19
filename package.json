@@ -1,8 +1,8 @@
 {
   "name": "contextbridge-chat",
   "displayName": "ContextBridge Chat",
-  "description": "Copilot-style chat for Claude Code, Codex and GitHub Copilot CLI: attach context, ask questions and review changes.",
-  "version": "0.3.6",
+  "description": "Copilot-style chat for Claude Code, Codex, GitHub Copilot CLI and Antigravity: attach context, ask questions and review changes.",
+  "version": "0.4.0",
   "publisher": "renormalizationtech",
   "license": "Apache-2.0",
   "icon": "media/logo.png",
@@ -145,12 +145,14 @@
           "enum": [
             "claude",
             "codex",
-            "copilot"
+            "copilot",
+            "agy"
           ],
           "enumDescriptions": [
             "Claude Code CLI",
             "Codex CLI",
-            "GitHub Copilot CLI"
+            "GitHub Copilot CLI",
+            "Antigravity CLI"
           ],
           "default": "claude",
           "description": "Provider that answers questions in workspaces where you haven't picked one in the chat. Once you pick in the chat, that choice is remembered for the workspace and takes precedence."
@@ -268,6 +270,21 @@
           "type": "string",
           "default": "",
           "description": "Reasoning effort for new Copilot chats. Empty uses the CLI's default; only supported efforts are offered. The effort picker's choice is remembered per workspace and takes precedence."
+        },
+        "contextBridge.agy.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Antigravity CLI executable if it is not found automatically."
+        },
+        "contextBridge.agy.model": {
+          "type": "string",
+          "default": "",
+          "description": "Model ID for new Antigravity chats. Empty uses the CLI default."
+        },
+        "contextBridge.agy.effort": {
+          "type": "string",
+          "default": "",
+          "description": "Reasoning effort for new Antigravity chats. Empty uses the CLI default."
         }
       }
     }

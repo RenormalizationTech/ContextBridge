@@ -6,6 +6,13 @@ export type Mode = 'ask' | 'agent';
 // CLI asks about. Bypass: every approval is granted automatically (still shown in the chat).
 export type PermissionLevel = 'default' | 'bypass';
 
+export interface ModeSession {
+  id: string;
+  hasContext?: boolean;
+  defaultModel?: string;
+  defaultEfforts?: Record<string, string>;
+}
+
 // A tool call the provider wants the user to approve (Agent mode, Claude Code).
 export interface PermissionRequest {
   tool: string;
@@ -28,12 +35,20 @@ export interface ProviderRequest {
   // Model and reasoning effort for this question. Undefined: the CLI's own default (user config).
   model?: string;
   effort?: string;
+  // Providers whose CLI binds tools at session creation get a distinct session per mode.
+  modeSession?: {
+    saved?: ModeSession;
+    recap: string;
+    freshRecap: string;
+    save: (session: ModeSession | undefined) => void;
+  };
   // Resolves true to allow. Used in Agent mode; must resolve false when the request is cancelled.
   requestPermission: (request: PermissionRequest) => Promise<boolean>;
 }
 
 export type ProviderEvent =
   | { type: 'text'; text: string }
+  | { type: 'notice'; text: string }
   | { type: 'tool'; name: string; detail: string }
   // The model the CLI is using, shown in the answer footer. effortConfirmed: the CLI reported
   // the effort it applies (undefined effort then means the model has no effort levels).
@@ -47,6 +62,8 @@ export interface ModelOption {
   id: string;
   label: string;
   efforts: string[];
+  // Some CLIs report effort options only after selecting that model in a session.
+  effortsUnknown?: boolean;
   // The effort used when none is chosen, when the CLI lists it.
   defaultEffort?: string;
   // The model id the CLI reports for this choice (an alias resolves to a full id).
@@ -77,6 +94,7 @@ export interface Provider {
   readonly label: string;
   // False when the provider only delivers whole messages (Codex `exec --json`).
   readonly streamsTokens: boolean;
+  readonly separateModeSessions?: boolean;
   // Resolves after emitting exactly one terminal event ('done' or 'error').
   // Follow-up questions continue the provider's conversation until resetConversation().
   ask(request: ProviderRequest, onEvent: (event: ProviderEvent) => void, signal: AbortSignal): Promise<void>;

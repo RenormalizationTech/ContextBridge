@@ -2,9 +2,9 @@
 
 <img src="media/logo.png" alt="ContextBridge Chat logo" width="96" height="96">
 
-**Copilot-style chat for Claude Code, Codex and GitHub Copilot CLI.** Attach the files and code selections you care about, ask a question, and get an answer in the VS Code side bar. In **Ask** mode (the default), ContextBridge won't let the provider edit your files: it suggests, and you make the changes. Switch to **Agent** mode when you want the CLI's full capabilities back.
+**Copilot-style chat for Claude Code, Codex, GitHub Copilot CLI and Antigravity.** Attach the files and code selections you care about, ask a question, and get an answer in the VS Code side bar. In **Ask** mode (the default), ContextBridge won't let the provider edit your files: it suggests, and you make the changes. Switch to **Agent** mode when you want the CLI's full capabilities back.
 
-ContextBridge is a thin layer over the official `claude`, `codex` and `copilot` CLIs. It uses their existing login and subscription, and has no accounts, API keys or billing of its own.
+ContextBridge uses your existing sign-in and subscription for the official `claude`, `codex`, `copilot`, and `agy` CLIs.
 
 ![ContextBridge in VS Code: an attached source file, Ask mode, a streamed answer and the Git change summary](docs/images/ask-mode.png)
 
@@ -17,7 +17,8 @@ ContextBridge is a thin layer over the official `claude`, `codex` and `copilot` 
   - **Claude Code:** install `claude`, then run `claude` once in a terminal to log in.
   - **Codex:** install `codex`, then run `codex login`.
   - **GitHub Copilot:** install `copilot`, then run `copilot login`. Your account must have access to Copilot CLI.
-- Tested on macOS with Claude Code 2.1.296, Codex CLI 0.162.1 and Copilot CLI 1.0.98 (official SDK 1.0.22).
+  - **Antigravity:** install `agy`, then run `agy acp --login`. Agent mode requires ACP (1.5.0 or later). Ask mode requires the verified version, 1.5.12.
+- Tested on macOS with Claude Code 2.1.296, Codex CLI 0.162.1, Copilot CLI 1.0.98 (official SDK 1.0.22), and Antigravity CLI 1.5.12.
 
 ## Install
 
@@ -28,7 +29,7 @@ To build and install from source:
 ```sh
 npm install
 npm run package                # writes dist/contextbridge-<version>.vsix
-code --install-extension dist/contextbridge-0.3.6.vsix
+code --install-extension dist/contextbridge-0.4.0.vsix
 ```
 
 If `code` isn't on your PATH, open the Extensions view in VS Code, choose **⋯ → Install from VSIX…**, and pick the file.
@@ -37,7 +38,7 @@ To update an installed copy after source changes, rebuild and reinstall the VSIX
 
 ```sh
 npm run package
-code --install-extension dist/contextbridge-0.3.6.vsix --force
+code --install-extension dist/contextbridge-0.4.0.vsix --force
 ```
 
 F5 builds the current source for the development host; it does not update the VSIX or your installed extension. An older VSIX can therefore be missing features even when its version is unchanged. Use the freshly packaged file when reinstalling.
@@ -53,7 +54,7 @@ The summary includes staged, unstaged, and untracked files, comparing their curr
 ## Usage
 
 1. Open the chat with **ContextBridge: Open**. It appears in the secondary (right) side bar, next to Copilot Chat if you use it. To open or close it, click **ContextBridge** in the status bar, press `⌃⌥⌘B` (`Ctrl+Alt+Shift+B` on Windows/Linux), or run **ContextBridge: Toggle Chat**.
-2. Pick **Claude Code**, **Codex**, or **GitHub Copilot**, and **Ask** or **Agent**, from the dropdowns. The line underneath shows whether the CLI was found and is logged in.
+2. Pick **Claude Code**, **Codex**, **GitHub Copilot**, or **Antigravity**, and **Ask** or **Agent**, from the dropdowns. The line underneath shows the CLI connection status.
 3. Attach context:
    - **Current file (automatic):** like Copilot, the file open in the editor is attached to each question. It appears as an outlined chip marked **current file**, which follows you as you switch files. Select text to send only the selection (the chip then says **selection**). Click **×** to leave it out of the current chat, and click the dimmed chip to bring it back. New chats start with it on; turn that off with `contextBridge.attachCurrentFile`. Only real files count: not settings, output panels or diff views. The model is told it was attached automatically, so questions about something else aren't steered toward it.
    - **+ button:** click **+** next to the attachments to search open editors and workspace files (select several), or to add the current selection.
@@ -70,6 +71,7 @@ Two dropdowns below the question box pick the model and reasoning effort for the
 
 - **Default** passes nothing to the CLI, so your own Claude Code or Codex configuration decides, as in the terminal. For Claude Code and Codex, the brackets show what that currently is, for example **Default (Opus 5.5)** and **Default effort (medium)**, read from the CLI with your settings applied (Claude Code's `get_settings`; Codex's `config/read` and model list). The default effort follows the selected model.
 - **Copilot defaults:** Default model/effort use the CLI configuration. The SDK cannot identify the configured default before a prompt initializes it, so the picker leaves that label generic. Choose a specific model to select its supported effort levels.
+- **Antigravity models and effort:** The model picker loads from ACP after the first question. ACP reports effort choices for the current model, so ContextBridge checks the selected effort with the CLI when that model is used.
 - **The lists come from the CLIs.** Claude Code: its `initialize` response (aliases such as Opus and Sonnet, which track the latest model of that family, plus specific versions). Codex: `model/list`, the models your account can use. Copilot: the official SDK model catalog, including account policy and supported efforts. Each model offers only the effort levels the CLI says it supports. A model without effort levels shows a disabled **No effort levels** picker. **Other…** takes any model name the CLI accepts.
 - **Unsupported efforts are never sent silently.** Claude Code and Codex can quietly ignore an effort the model doesn't support, so ContextBridge leaves it out and says so in the chat ("GPT-6-Luna doesn't support "ultra" effort, so it uses its default effort (medium)"). Switching to a model that lacks the chosen effort resets it to Default, with a notice. This can only come up for an effort from settings or history, since the picker doesn't offer unsupported levels.
 - **The footer shows what answered:** the model as the CLI reports it (for example `claude-sonnet-5-5`) and its effort. For Claude Code this is the effort it actually applied. An effort ContextBridge couldn't confirm, such as one sent with a typed-in model, is marked **(requested)**.
@@ -101,6 +103,9 @@ Switch with the **Ask / Agent** dropdown, or the `contextBridge.mode` setting. S
 | Claude Code | Read and search tools only (see below) | Full tool set. Edits, commands and other actions pause with an **Allow / Deny** card in the chat. Allow rules in your Claude settings still auto-approve what you've already trusted. |
 | Codex | Read-only sandbox; Codex can't ask for more | Read-only sandbox, but Codex can ask to do more. Edits and commands that need write access pause with an **Allow / Deny** card in the chat. |
 | GitHub Copilot | Read/search tools and ContextBridge's read-only Git tools; local edits, shell and subagents are unavailable | Full tool set through the SDK; edits, commands and other permission requests pause with **Allow / Deny** cards. |
+| Antigravity | File reading and search through a ContextBridge read-only agent; available on `agy` 1.5.12 | Antigravity applies your CLI permission rules. Actions that require approval pause with **Allow / Deny** cards. |
+
+**Antigravity sessions:** The transcript stays visible when you switch modes. The first question in each mode starts its own ACP session, and later questions in that mode reuse it. ContextBridge sends a short recap of recent questions and answers the destination session has missed. The Ask agent is provisioned in a temporary folder. Antigravity Ask currently has no shell or ContextBridge Git tools.
 
 A banner shows while Agent mode is on. Cancelling while an approval card is waiting counts as **Deny**.
 
@@ -118,13 +123,13 @@ Approval cards offer **Allow**, **Always allow** and **Deny**. **Always allow** 
 
 Ask mode is enforced through each CLI's own configuration, not just by asking the model nicely:
 
-| | Claude Code | Codex | GitHub Copilot |
-| --- | --- | --- | --- |
-| How | Read/search tools only; other permission requests are denied | Read-only sandbox with approvals disabled, including follow-ups | Per-session read/search tool list; built-in edit, shell and subagent tools unavailable. Reapplied on every follow-up; other built-in action requests are denied |
-| Can read and search workspace files | Yes | Yes, including read-only shell commands | Yes |
-| Can read Git history and diffs | Through ContextBridge's `git_status`, `git_diff`, `git_log` and `git_show` tools | With read-only Git commands in the sandbox | Through the same four checked Git tools |
-| Can search the web | Yes | Yes, through configured Codex web search | Through available web-fetch and MCP tools; availability depends on Copilot's runtime and account |
-| Can edit, create or delete workspace files, or mutate Git | No | No | No |
+| | Claude Code | Codex | GitHub Copilot | Antigravity |
+| --- | --- | --- | --- | --- |
+| How | Read/search tools only; other permission requests are denied | Read-only sandbox with approvals disabled, including follow-ups | Per-session read/search tool list; built-in edit, shell and subagent tools unavailable. Reapplied on every follow-up; other built-in action requests are denied | Dedicated ACP session with a read-only custom agent |
+| Can read and search workspace files | Yes | Yes, including read-only shell commands | Yes | Yes |
+| Can read Git history and diffs | Through ContextBridge's `git_status`, `git_diff`, `git_log` and `git_show` tools | With read-only Git commands in the sandbox | Through the same four checked Git tools | No |
+| Can search the web | Yes | Yes, through configured Codex web search | Through available web-fetch and MCP tools; availability depends on Copilot's runtime and account | No |
+| Can edit, create or delete workspace files, or mutate Git | No | No | No | No |
 
 **Not covered:** your own **MCP servers** (Claude Code and Copilot) and **plugins** (Codex) stay available, because ContextBridge keeps each CLI's capabilities. They run with whatever access they have, so an MCP server that writes files or updates an external service, or a Codex computer-use plugin, can still have side effects. If that matters to you, remove or disable them in the CLI's own configuration.
 
@@ -136,26 +141,28 @@ Conversations are saved by each CLI like any other session (for example, they ap
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `contextBridge.provider` | `claude` | `claude`, `codex`, or `copilot`. Default for workspaces where you haven't picked one in the chat |
+| `contextBridge.provider` | `claude` | `claude`, `codex`, `copilot`, or `agy`. Default for workspaces where you haven't picked one in the chat |
 | `contextBridge.mode` | `ask` | `ask` or `agent`. Default for workspaces where you haven't picked one in the chat |
 | `contextBridge.attachCurrentFile` | `true` | Attach the file open in the editor (or its selection) to each question |
 | `contextBridge.agent.defaultPermissions` | `default` | Agent-mode level for new chats: `default` (Default Permissions) or `bypass` (Bypass Approvals) |
 | `contextBridge.claude.model`, `contextBridge.codex.model`, `contextBridge.copilot.model` | empty | Model for new chats (empty: the CLI's default) in workspaces where you haven't picked one |
 | `contextBridge.claude.effort`, `contextBridge.codex.effort`, `contextBridge.copilot.effort` | empty | Effort for new chats (empty: the CLI's default) in workspaces where you haven't picked one |
-
-The pickers in the chat never change these settings. Their choices (provider, mode, and model and effort for each provider) are remembered per workspace, so each project and VS Code window keeps its own. A setting applies where nothing has been picked yet, and changing it updates open windows that are still following it.
+| `contextBridge.agy.model`, `contextBridge.agy.effort` | empty | Model and effort for new Antigravity chats. Empty uses the CLI default |
 | `contextBridge.history.maxChats` | `50` | Chats kept per workspace; `0` turns history off |
 | `contextBridge.claude.path` | empty | Path to `claude` if it isn't found automatically |
 | `contextBridge.codex.path` | empty | Path to `codex` if it isn't found automatically |
 | `contextBridge.copilot.path` | empty | Path to `copilot` if it isn't found automatically |
+| `contextBridge.agy.path` | empty | Path to `agy` if it isn't found automatically |
 | `contextBridge.codex.transport` | `app-server` | `app-server` (streams, approval cards) or `exec` (fallback) |
 | `contextBridge.codex.webSearch` | `live` | Codex web search: `live` (current pages), `cached` (OpenAI's index, may be slightly stale), or `disabled` |
+
+The pickers in the chat never change these settings. Their choices (provider, mode, and model and effort for each provider) are remembered per workspace, so each project and VS Code window keeps its own. A setting applies where nothing has been picked yet, and changing it updates open windows that are still following it.
 
 ## Troubleshooting
 
 - **Only one CLI installed:** that's fine. If the selected provider isn't installed when the chat first opens, ContextBridge switches to one that is and tells you.
 - **"CLI not found":** ContextBridge looks in your login shell's PATH and the usual install locations (`~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin`, ...). If yours is elsewhere, set the path setting above (run `which claude` in a terminal to find it).
-- **"Not logged in":** run `claude`, `codex login`, or `copilot login` in a terminal, then switch providers in the dropdown to refresh the status.
+- **"Not logged in":** run `claude`, `codex login`, `copilot login`, or `agy acp --login` in a terminal, then switch providers in the dropdown to refresh the status.
 - **The title bar's Toggle Chat button opens Copilot Chat:** that button belongs to VS Code's built-in Chat (used by Copilot), and extensions can't change it. Use the **ContextBridge** status bar item or `⌃⌥⌘B` instead. To hide the button, set `"chat.commandCenter.enabled": false`.
 - **An MCP server fails to start:** ContextBridge passes your login shell's PATH to the CLI. Check that the server works when you run `claude` from a terminal.
 
@@ -167,7 +174,7 @@ Requirements: Node.js 22.12+ (developed on 24, also built on 26) and npm.
 npm install
 npm run check          # typecheck, unit tests (including fake-CLI adapter tests), build
 npm run watch          # rebuild on change
-npm run test:boundary  # live Ask-mode check against all three CLIs (uses your accounts)
+npm run test:boundary  # live Ask-mode check against the installed CLIs (uses your accounts)
 npm run test:copilot   # live attachments/resume/approval/cancel check in a disposable repo
 npm run package        # build a VSIX into dist/
 ```
@@ -178,7 +185,7 @@ Layout:
 - `src/context/`: attachments and prompt assembly.
 - `src/chat/`: the chat view, host side.
 - `src/webview/`: the chat webview script and Markdown rendering.
-- `src/providers/`: the Claude Code, Codex and Copilot adapters; Mock is a test fixture only.
+- `src/providers/`: the Claude Code, Codex, Copilot, and Antigravity adapters. Mock is a test fixture.
 - `scripts/`: the live boundary check and the Copilot feasibility/live checks.
 - `prototypes/`: the Phase 1 CLI scripts.
 

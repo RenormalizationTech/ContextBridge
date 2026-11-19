@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 — 2026-11-19
+
+- Add Google Antigravity CLI (`agy`) through ACP, with streamed answers, model and effort selection, and cancellation.
+- Keep one chat transcript when switching Antigravity between Ask and Agent. Each mode reuses its own session, with a short recap of recent turns when needed.
+- Run Antigravity Ask with read-only tools on the verified CLI version, `agy` 1.5.12. In Agent mode, requests that require approval appear as Allow/Deny cards.
+
 ## 0.3.6 — 2026-10-28
 
 - Keep each VS Code window's chat when you use ContextBridge in another window. Before, the pickers saved your choices as user settings, so switching the provider in one window cleared the chat in every other window, and switching between Ask and Agent changed the mode everywhere.

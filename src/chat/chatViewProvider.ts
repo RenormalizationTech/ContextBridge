@@ -6,11 +6,12 @@ import type { CurrentFileTracker } from '../context/currentFile.ts';
 import { applyLimits, buildPrompt, MAX_ATTACHMENT_BYTES } from '../context/payload.ts';
 import type { Attachment } from '../context/types.ts';
 import type { ChangesView } from '../git/changesView.ts';
-import type { Mode, ModelCatalog, PermissionLevel, PermissionRequest, Provider, ProviderStatus } from '../providers/types.ts';
+import type { Mode, ModeSession, ModelCatalog, PermissionLevel, PermissionRequest, Provider, ProviderStatus } from '../providers/types.ts';
 import { Conversation, isTranscriptMessage } from './conversation.ts';
 import type { HistoryStore } from './historyStore.ts';
 import { resolveFileLink } from './links.ts';
 import { OTHER_MODEL, type CurrentFileState, type HostMessage, type TranscriptMessage, type WebviewMessage } from './messages.ts';
+import { modeRecap } from './modeRecap.ts';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
   static readonly viewId = 'contextBridge.chat';
@@ -115,6 +116,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   // Switching modes keeps the conversation; the next question runs with the new mode's permissions.
   selectMode(mode: Mode, { remember = true } = {}): void {
     if (mode === this.mode || (mode !== 'ask' && mode !== 'agent')) return;
+    if (this.pending && this.provider.separateModeSessions) {
+      this.postState();
+      return;
+    }
     this.mode = mode;
     if (remember) this.onModeSelected(mode);
     this.postState();
@@ -192,7 +197,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private knownEfforts(model: string | undefined): string[] | undefined {
     const catalog = this.catalogs.get(this.providerId);
     if (!catalog) return undefined;
-    return model === undefined ? (catalog.defaultEffortsUnknown ? [] : catalog.defaultModel?.efforts) : catalog.models.find((option) => option.id === model)?.efforts;
+    if (model === undefined) return catalog.defaultEffortsUnknown ? [] : catalog.defaultModel?.efforts;
+    const option = catalog.models.find(({ id }) => id === model);
+    return option?.effortsUnknown ? undefined : option?.efforts;
   }
 
   private modelLabel(model: string | undefined): string {
@@ -310,7 +317,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   async clearHistory(): Promise<void> {
     const confirmed = await vscode.window.showWarningMessage(
       'Delete all saved ContextBridge chats for this workspace?',
-      { modal: true, detail: 'Conversations stored by the Claude Code and Codex CLIs themselves are not affected.' },
+      { modal: true, detail: 'Each CLI retains its own conversations.' },
       'Delete All',
     );
     if (confirmed !== 'Delete All') return;
@@ -341,7 +348,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.permissionLevel = stored.permissionLevel ?? this.defaultPermissionLevel();
     this.alwaysAllowed = new Set();
     this.currentFileEnabled = this.attachCurrentFile();
-    this.provider.restoreConversation(stored.providerConversationId);
+    this.provider.restoreConversation(this.provider.separateModeSessions ? undefined : stored.providerConversationId);
     this.post({ type: 'restore', messages: this.conversation.messages });
     this.reveal();
   }
@@ -603,13 +610,28 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.pending = controller;
     const conversation = this.conversation;
     const provider = this.provider;
+    const mode = this.mode;
+    const modeSession = provider.separateModeSessions ? {
+      saved: conversation.providerModeSessions[mode],
+      recap: modeRecap(conversation.messages, mode, true),
+      freshRecap: modeRecap(conversation.messages, mode, false),
+      save: (session: ModeSession | undefined) => {
+        const otherMode = mode === 'ask' ? 'agent' : 'ask';
+        if (session && session.id === conversation.providerModeSessions[otherMode]?.id) {
+          throw new Error('The provider returned a session already used in the other mode.');
+        }
+        if (session) conversation.providerModeSessions[mode] = session;
+        else delete conversation.providerModeSessions[mode];
+      },
+    } : undefined;
     // The current file is read now: its selection at send time, else the whole file.
     const implicit = this.currentFileEnabled ? this.implicitAttachments() : [];
     const items = [...this.attachments.items, ...implicit];
     const sent = items.map((item) => (item.kind === 'selection' ? `${item.path}:${item.range.start}-${item.range.end}` : item.path));
-    this.post({ type: 'start', question, attachments: sent, provider: provider.label, mode: this.mode, at: Date.now() });
+    this.post({ type: 'start', question, attachments: sent, provider: provider.label, mode, at: Date.now() });
     try {
       const resolved = applyLimits(await Promise.all(items.map(async (item) => ({ ...(await resolveAttachment(item)), current: implicit.includes(item) || undefined }))));
+      controller.signal.throwIfAborted();
       for (const attachment of resolved) {
         if (attachment.omitted !== undefined) {
           this.post({ type: 'notice', text: `${attachment.path}: content not sent (${attachment.omitted}); sent as a reference only.` });
@@ -632,7 +654,6 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         conversation.effort = undefined;
         this.postState();
       }
-      const mode = this.mode;
       await provider.ask(
         {
           prompt: buildPrompt(resolved, question, mode),
@@ -640,17 +661,24 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           mode,
           model: conversation.model,
           effort,
+          modeSession,
           requestPermission: (request) => this.requestPermission(request, controller.signal),
         },
         (event) => {
           // Recorded as events arrive: after New chat the provider is reset before this request ends.
-          conversation.providerConversationId = provider.conversationId ?? conversation.providerConversationId;
+          if (!modeSession) conversation.providerConversationId = provider.conversationId ?? conversation.providerConversationId;
+          if (conversation !== this.conversation) {
+            if (event.type === 'done') conversation.append({ ...event, at: Date.now() });
+            if (event.type === 'error') conversation.append({ type: 'error', message: event.message, at: Date.now() });
+            return;
+          }
           if (event.type === 'error') {
             const { modelUnavailable, ...error } = event;
             this.post({ ...error, at: Date.now() });
             if (modelUnavailable) this.dropUnavailableModel(conversation, provider.id);
           } else if (event.type === 'model') {
             this.post(this.footerModel(event, conversation.model, effort));
+            if (modeSession) void this.loadModels();
           } else {
             this.post(event.type === 'done' ? { ...event, at: Date.now() } : event);
           }
@@ -658,13 +686,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         controller.signal,
       );
     } catch (error) {
-      this.post({ type: 'error', message: error instanceof Error ? error.message : String(error), at: Date.now() });
+      const terminal = controller.signal.aborted
+        ? { type: 'done' as const, cancelled: true, at: Date.now() }
+        : { type: 'error' as const, message: error instanceof Error ? error.message : String(error), at: Date.now() };
+      if (conversation === this.conversation) this.post(terminal);
+      else conversation.append(terminal);
     } finally {
       if (this.pending === controller) this.pending = undefined;
       if (conversation === this.conversation) {
-        conversation.providerConversationId = provider.conversationId ?? conversation.providerConversationId;
+        if (!modeSession) conversation.providerConversationId = provider.conversationId ?? conversation.providerConversationId;
         await this.saveNow();
-      } else {
+      } else if (this.maxChats() > 0) {
         await this.history.save(conversation.toJSON()).catch(() => {});
       }
     }

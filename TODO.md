@@ -99,7 +99,7 @@ For an existing checkout, inspect `git status` and save any local work before up
 - [x] Persistent chat history (shipped in 0.1.0).
 - [ ] Multi-root workspaces.
 - [ ] Symbols/references and additional provider adapters.
-- [ ] Antigravity CLI (`agy`): **deferred** (owner decision, October 13, 2026). An Ask-only provider looked feasible with an installed read-only custom agent, but `agy` is changing too fast and has no approval protocol for Agent mode. The problems and the conditions for revisiting are in `docs/provider-feasibility.md` ("Antigravity CLI `agy`").
+- [x] Add Antigravity CLI (`agy`) through ACP, with a shared transcript and separate Ask and Agent sessions. The October experiment used the earlier print interface. See `docs/provider-feasibility.md` for both approaches.
 
 Agent mode was added after the MVP as an optional mode (see CLAUDE.md decision 9); Ask stays the default.
 

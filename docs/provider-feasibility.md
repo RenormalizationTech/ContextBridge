@@ -116,7 +116,15 @@ Checked with Claude Code 2.1.296 and Codex CLI 0.162.1. These are the interfaces
 
 **Both CLIs silently accept an effort the model doesn't support.** Codex ran GPT-6-Luna with `ultra`, which isn't in its supported list, over both app-server and exec, with no warning. So ContextBridge checks the effort against the CLI's list before sending.
 
-## Antigravity CLI `agy` (October 13, 2026): feasibility spike, deferred
+## Antigravity CLI `agy` through ACP
+
+Antigravity CLI 1.5.0 introduced an editor-facing ACP server over stdio. ContextBridge uses ACP v1 for streamed replies, tool updates, Allow/Deny requests, cancellation and session resume. Google sign-in and rules that already allow or deny an action remain with the CLI. [Antigravity ACP documentation](https://antigravity.google/docs/ide/extensions/acp)
+
+The CLI retains the original tool set on resume even when started with a different agent. On 1.5.12, an Agent session reopened with the Ask agent could still edit files and run Git commands. An Ask session reopened as Agent still had read-only tools. ContextBridge therefore saves an Ask and an Agent session separately in the same chat transcript. The first prompt in a mode creates its session and includes a bounded recap as needed.
+
+In Ask mode the extension supplies a read-only agent from a private temporary directory using `--add-dir` and `--agent`. It verifies the version reported by the ACP process and checks the session startup log for the CLI's silent fallback when it cannot find the agent. The probe used macOS and `agy` 1.5.12. That build could read workspace files and blocked edits, file creation and deletion, and Git changes in fresh and resumed Ask conversations, including with the CLI's approval bypass enabled. Run `npm run test:boundary -- agy` to check the integrated provider with a temporary Git repo.
+
+## Antigravity CLI `agy` (October 13, 2026): print-mode feasibility spike
 
 **Status: deferred (owner decision, October 13, 2026).** Not added to ContextBridge for now. The findings below are kept for a later attempt; see "Problems" and "When to revisit" at the end of this section.
 
